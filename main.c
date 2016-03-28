@@ -1,11 +1,15 @@
-#include <stdio.h>
 #include <errno.h>
-#include <unistd.h>  /* STD*_FILNO */
 #include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>  /* STD*_FILNO */
+
 #include <ev.h>
 
 #include "lineio.h"
+#include "check.h"
 #include "log.h"
 
 int debug_mode;
@@ -27,19 +31,97 @@ set_nonblocking(int fd)
     return 0;
 }
 
+static int
+split(char *cmd, char *args[], int n)
+{
+    char *next = cmd;
+    int i;
+    for (i = 0; i < n && next != NULL; i++) {
+        args[i] = strsep(&next, " ");
+        log_debug("args[%d]='%s'", i, args[i]);
+    }
+    return i;
+}
+
+#define MAX_ARGS 3
+
 static void
 line_received(char *line)
 {
-    log_debug("received line: '%s'", line);
+    struct ev_loop *loop = EV_DEFAULT;
+    char *argv[MAX_ARGS] = {0};
+
+    split(line, argv, MAX_ARGS);
+
+    char *cmd = argv[0];
+    if (cmd == NULL) {
+        log_error("empty command");
+        /* TODO: send error to caller? */
+        return;
+    }
+
+    if (strcmp(cmd, "start") == 0) {
+        char *path = argv[1];
+        if (path == NULL) {
+            log_error("path required");
+            /* TODO: send error to caller? */
+            return;
+        }
+
+        char *interval_string = argv[2];
+        if (interval_string == NULL) {
+            log_error("interval required");
+            /* TODO: send error to caller? */
+            return;
+        }
+
+        char *endp;
+        long interval = strtol(interval_string, &endp, 10);
+        if (interval_string == endp || *endp != 0) {
+            /* Not converted, or trailing characters */
+            log_error("invalid interval: '%s'", interval_string);
+            /* TODO: send error to caller? */
+            return;
+        }
+        if (interval < 0 || interval == INT_MAX) {
+            log_error("interval out of range: '%s'", interval_string);
+            /* TODO: send error to caller? */
+            return;
+        }
+
+        check_start(EV_A_ path, interval);
+    } else if (strcmp(cmd, "stop") == 0) {
+        char *path = argv[1];
+        if (path == NULL) {
+            log_error("path required");
+            /* TODO: send error to caller? */
+            return;
+        }
+
+        check_stop(EV_A_ path);
+    } else {
+        log_error("invalid command: '%s'", cmd);
+        /* TODO: send error to caller? */
+        return;
+    }
+}
+
+static void
+check_complete(char *path, ev_tstamp delay)
+{
+    log_debug("check complete: path=%s delay=%.6f", path, delay);
 }
 
 int main(int argc, char *argv[])
 {
     int err;
     struct lineio lineio;
+    struct ev_loop *loop = EV_DEFAULT;
 
     if (argc > 1)
         debug_mode = strcmp(argv[1], "-d") == 0;
+
+    log_info("started");
 
     err = set_nonblocking(STDIN_FILENO);
     if (err) {
@@ -51,11 +133,13 @@ int main(int argc, char *argv[])
     lineio_init(&lineio, STDIN_FILENO, line_received);
 
     ev_io_init(&lineio.watcher, lineio_cb, lineio.fd, EV_READ);
-    ev_io_start(EV_DEFAULT, &lineio.watcher);
+    ev_io_start(EV_A_ &lineio.watcher);
 
-    ev_run(EV_DEFAULT, 0);
+    check_set_cb(check_complete);
 
-    log_debug("terminated");
+    ev_run(EV_A_ 0);
+
+    log_info("terminated");
 
     return 0;
 }
