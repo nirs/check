@@ -1,3 +1,11 @@
+/*
+ * Copyright 2016 Nir Soffer <nsoffer@redhat.com>
+ *
+ * This copyrighted material is made available to anyone wishing to use,
+ * modify, copy, or redistribute it subject to the terms and conditions
+ * of the GNU General Public License v2 or (at your option) any later version.
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
