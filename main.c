@@ -20,6 +20,9 @@
 #include "check.h"
 #include "log.h"
 
+#define MAX_CMD_ARGS 3
+#define MAX_PATHS 128
+
 int debug_mode;
 
 static int
@@ -51,15 +54,13 @@ split(char *cmd, char *args[], int n)
     return i;
 }
 
-#define MAX_ARGS 3
-
 static void
 line_received(char *line)
 {
     struct ev_loop *loop = EV_DEFAULT;
-    char *argv[MAX_ARGS] = {0};
+    char *argv[MAX_CMD_ARGS] = {0};
 
-    split(line, argv, MAX_ARGS);
+    split(line, argv, MAX_CMD_ARGS);
 
     char *cmd = argv[0];
     if (cmd == NULL) {
@@ -131,6 +132,12 @@ int main(int argc, char *argv[])
 
     log_info("started");
 
+    err = check_setup(MAX_PATHS, check_complete);
+    if (err != 0) {
+        log_error("check_setup: %s", strerror(-err));
+        return 1;
+    }
+
     err = set_nonblocking(STDIN_FILENO);
     if (err) {
         log_error("Cannot set fd %d nonblocking: %s",
@@ -143,11 +150,13 @@ int main(int argc, char *argv[])
     ev_io_init(&lineio.watcher, lineio_cb, lineio.fd, EV_READ);
     ev_io_start(EV_A_ &lineio.watcher);
 
-    check_set_cb(check_complete);
-
     ev_run(EV_A_ 0);
 
     log_info("terminated");
+
+    err = check_teardown();
+    if (err != 0)
+        log_error("check_teardown: %s", strerror(-err));
 
     return 0;
 }

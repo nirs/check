@@ -7,38 +7,120 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/queue.h>
+#include <unistd.h>
+
 #include <ev.h>
+#include <libaio.h>
 
 #include "log.h"
 #include "check.h"
+
+enum {WAITING, RUNNING, STOPPING};
 
 struct check {
     ev_timer timer;
     char path[1024];
     int interval;
     TAILQ_ENTRY(check) entries;
+    int state;
+    ev_tstamp start;
+    int fd;
+    struct iocb iocb;
+    void *buf;
 };
 
-static void check_init(struct check *ck, char *path, int interval);
+static struct check * check_new(char *path, int interval);
+static void check_free(struct check *ck);
+static void check_stopped(struct check *ck);
+
 static void check_cb(EV_P_ ev_timer *w, int revents);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
 static complete_cb complete;
+static io_context_t ioctx;
 
-void check_set_cb(complete_cb cb)
+int check_setup(int max_paths, complete_cb cb)
 {
+    /*
+     * - init eventfd
+     * - register with loop check_reap
+     */
+
     complete = cb;
+
+    memset(&ioctx, 0, sizeof(ioctx));
+    return io_setup(max_paths, &ioctx);
 }
 
-static void check_init(struct check *ck, char *path, int interval)
+int check_teardown(void)
 {
+    int err = io_destroy(ioctx);
+    if (err)
+        return err;
+
+    memset(&ioctx, 0, sizeof(ioctx));
+
+    /*
+     * - unregister check_reap
+     * - close eventfd
+     */
+
+    return 0;
+}
+
+static struct check * check_new(char *path, int interval)
+{
+    int saved_errno;
+
+    struct check *ck = malloc(sizeof(*ck));
+    if (ck == NULL)
+        return NULL;
+
     strncpy(ck->path, path, sizeof(ck->path) - 1);
     ck->path[sizeof(ck->path) - 1] = 0;
+
     ck->interval = interval;
+    ck->state = WAITING;
+    ck->fd = -1;
+    ck->buf = NULL;
+
+    /* Consider using min align and min transfer for file based paths */
+    int pagesize = sysconf(_SC_PAGESIZE);
+    if (pagesize == -1) {
+        saved_errno = errno;
+        goto error;
+    }
+
+    int err = posix_memalign(&ck->buf, pagesize, pagesize);
+    if (err) {
+        saved_errno = err;
+        goto error;
+    }
+
+    return ck;
+
+error:
+    free(ck->buf);
+    free(ck);
+    errno = saved_errno;
+    return NULL;
+}
+
+static void check_free(struct check *ck)
+{
+    if (ck == NULL)
+        return;
+
+    if (ck->fd != -1)
+        close(ck->fd);
+
+    free(ck->buf);
+    free(ck);
 }
 
 void check_start(EV_P_ char *path, int interval)
@@ -55,10 +137,12 @@ void check_start(EV_P_ char *path, int interval)
         }
     }
 
-    ck = malloc(sizeof(*ck));
-    assert(ck);
-
-    check_init(ck, path, interval);
+    ck = check_new(path, interval);
+    if (ck == NULL) {
+        log_error("check_new: %s", strerror(errno));
+        /* TODO: return error to caller */
+        return;
+    }
 
     ev_timer_init(&ck->timer, check_cb, 0, ck->interval);
     ev_timer_start(EV_A_ &ck->timer);
@@ -74,9 +158,11 @@ void check_stop(EV_P_ char *path)
 
     TAILQ_FOREACH(ck, &checkers, entries) {
         if (strcmp(ck->path, path) == 0) {
-            TAILQ_REMOVE(&checkers, ck, entries);
             ev_timer_stop(EV_A_ &ck->timer);
-            free(ck);
+            if (ck->state == RUNNING)
+                ck->state = STOPPING;
+            else
+                check_stopped(ck);
             return;
         }
     }
@@ -84,10 +170,27 @@ void check_stop(EV_P_ char *path)
     log_debug("not checking '%s'", path);
 }
 
+static void check_stopped(struct check *ck)
+{
+    log_debug("checker '%s' stopped", ck->path);
+    TAILQ_REMOVE(&checkers, ck, entries);
+    check_free(ck);
+    /* Send stopped event */
+    return;
+}
+
 static void check_cb(EV_P_ ev_timer *w, int revents)
 {
     struct check *ck = (struct check *)w;
 
-    /* Fake it for now */
+    /*
+     * - if running, log warning about block check
+     * - if fd is closed, open fd
+     * - preapre for read
+     * - set eventfd
+     * - submit io
+     * - change state to RUNNING
+     */
+
     complete(ck->path, 0.0);
 }

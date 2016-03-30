@@ -2,7 +2,7 @@ src = lineio.c main.c check.c
 
 CPPFLAGS = -D_GNU_SOURCE
 CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -Werror
-LDLIBS = -lev
+LDLIBS = -lev -laio
 
 obj = $(src:.c=.o)
 
