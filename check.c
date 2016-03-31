@@ -8,11 +8,17 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <stdlib.h>
+#include <fcntl.h>
+#include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <sys/queue.h>
+#include <time.h>
 #include <unistd.h>
+#include <sys/eventfd.h>
+#include <sys/queue.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <ev.h>
 #include <libaio.h>
@@ -39,36 +45,68 @@ static void check_free(struct check *ck);
 static void check_stopped(struct check *ck);
 
 static void check_cb(EV_P_ ev_timer *w, int revents);
+static void check_reap(EV_P_ ev_io *w, int revents);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
 static complete_cb complete;
 static io_context_t ioctx;
+static int ioeventfd = -1;
+static ev_io ioeventfd_watcher;
+static int pagesize;
+static int max_checkers;
 
-int check_setup(int max_paths, complete_cb cb)
+int check_setup(EV_P_ int max_paths, complete_cb cb)
 {
-    /*
-     * - init eventfd
-     * - register with loop check_reap
-     */
+    int saved_errno;
 
+    max_checkers = max_paths;
     complete = cb;
 
+    /* Consider using min align and min transfer for file based paths */
+    pagesize = sysconf(_SC_PAGESIZE);
+    if (pagesize == -1)
+        return -1;
+
+    ioeventfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (ioeventfd == -1)
+        return -1;
+
+    ev_io_init(&ioeventfd_watcher, check_reap, ioeventfd, EV_READ);
+    ev_io_start(EV_A_ &ioeventfd_watcher);
+
     memset(&ioctx, 0, sizeof(ioctx));
-    return io_setup(max_paths, &ioctx);
+    int err = io_setup(max_checkers, &ioctx);
+    if (err) {
+        saved_errno = -err;
+        goto error;
+    }
+
+    return 0;
+
+error:
+    ev_io_stop(EV_A_ &ioeventfd_watcher);
+    close(ioeventfd);
+    ioeventfd = -1;
+    errno = saved_errno;
+    return -1;
 }
 
-int check_teardown(void)
+int check_teardown(EV_P)
 {
+    ev_io_stop(EV_A_ &ioeventfd_watcher);
+
+    if (ioeventfd != -1) {
+        close(ioeventfd);
+        ioeventfd = -1;
+    }
+
     int err = io_destroy(ioctx);
-    if (err)
-        return err;
+    if (err) {
+        errno = -err;
+        return -1;
+    }
 
     memset(&ioctx, 0, sizeof(ioctx));
-
-    /*
-     * - unregister check_reap
-     * - close eventfd
-     */
 
     return 0;
 }
@@ -88,13 +126,6 @@ static struct check * check_new(char *path, int interval)
     ck->state = WAITING;
     ck->fd = -1;
     ck->buf = NULL;
-
-    /* Consider using min align and min transfer for file based paths */
-    int pagesize = sysconf(_SC_PAGESIZE);
-    if (pagesize == -1) {
-        saved_errno = errno;
-        goto error;
-    }
 
     int err = posix_memalign(&ck->buf, pagesize, pagesize);
     if (err) {
@@ -183,14 +214,94 @@ static void check_cb(EV_P_ ev_timer *w, int revents)
 {
     struct check *ck = (struct check *)w;
 
-    /*
-     * - if running, log warning about block check
-     * - if fd is closed, open fd
-     * - preapre for read
-     * - set eventfd
-     * - submit io
-     * - change state to RUNNING
-     */
+    if (ck->state == WAITING) {
+        ck->start = ev_time();
+        if (ck->fd == -1) {
+            log_debug("opening '%s'", ck->path);
+            ck->fd = open(ck->path, O_RDONLY | O_DIRECT | O_NONBLOCK);
+            if (ck->fd == -1) {
+                int error = errno;
+                log_error("error opening '%s': %s", ck->path, strerror(error));
+                ev_tstamp elapsed = ev_time() - ck->start;
+                complete(ck->path, elapsed, error);
+                return;
+            }
+        }
 
-    complete(ck->path, 0.0);
+        io_prep_pread(&ck->iocb, ck->fd, ck->buf, pagesize, 0);
+        io_set_eventfd(&ck->iocb, ioeventfd);
+
+        log_debug("submitting read request for '%s'", ck->path);
+        struct iocb *ios[1] = {&ck->iocb};
+        int nios = io_submit(ioctx, 1, ios);
+        if (nios < 1) {
+            log_error("io_submit: %s", strerror(-nios));
+            ev_tstamp elapsed = ev_time() - ck->start;
+            complete(ck->path, elapsed, -nios);
+            return;
+        }
+
+        ev_tstamp elapsed = ev_time() - ck->start;
+        log_debug("submitted read request for '%s' in %.6f seconds",
+                  ck->path, elapsed);
+        ck->state = RUNNING;
+    } else if (ck->state == RUNNING) {
+        ev_tstamp elapsed = ev_time() - ck->start;
+        log_error("checker '%s' blocked for %.6f seconds", ck->path, elapsed);
+    } else {
+        assert(0 && "invalid state");
+    }
+}
+
+static void check_reap(EV_P_ ev_io *w, int revents)
+{
+    eventfd_t nevents;
+    int err;
+
+    do {
+        err = eventfd_read(ioeventfd, &nevents);
+    } while (err == -1 && errno == EINTR);
+
+    if (err) {
+        if (errno == EAGAIN)
+            return;
+        log_error("eventfd_read: %s", strerror(errno));
+        return;
+    }
+
+    log_debug("received %d events on eventfd", (int)nevents);
+
+    struct timespec timeout = {0};
+    struct io_event events[nevents];
+    int nready;
+
+    do {
+        nready = io_getevents(ioctx, 1, nevents, events, &timeout);
+    } while (nready == -EINTR);
+
+    if (nready < 0) {
+        log_error("io_getevents: %s", strerror(-nready));
+        return;
+    }
+
+    log_debug("reaped %d io events", nready);
+
+    for (int i = 0; i < nready; i++) {
+        struct iocb *iocb = events[i].obj;
+        /* TODO: Add macro for this */
+        struct check *ck = (struct check *)
+            (((char *)iocb) - offsetof(struct check, iocb));
+
+        if (ck->state == STOPPING) {
+            check_stopped(ck);
+            continue;
+        }
+
+        assert(ck->state == RUNNING && "invalid state");
+        ck->state = WAITING;
+        ev_tstamp elapsed = ev_time() - ck->start;
+        /* Partial read (res < bufsize) is ok */
+        int res = events[i].res;
+        complete(ck->path, elapsed, res < 0 ? -res : 0);
+    }
 }

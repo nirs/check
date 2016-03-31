@@ -116,9 +116,11 @@ line_received(char *line)
 }
 
 static void
-check_complete(char *path, ev_tstamp delay)
+check_complete(char *path, ev_tstamp delay, int error)
 {
-    log_debug("check complete: path=%s delay=%.6f", path, delay);
+    /* TODO: send response to parent */
+    log_debug("check complete: path=%s delay=%.6f error=%d",
+              path, delay, error);
 }
 
 int main(int argc, char *argv[])
@@ -132,9 +134,9 @@ int main(int argc, char *argv[])
 
     log_info("started");
 
-    err = check_setup(MAX_PATHS, check_complete);
+    err = check_setup(EV_A_ MAX_PATHS, check_complete);
     if (err != 0) {
-        log_error("check_setup: %s", strerror(-err));
+        log_error("check_setup: %s", strerror(errno));
         return 1;
     }
 
@@ -154,9 +156,9 @@ int main(int argc, char *argv[])
 
     log_info("terminated");
 
-    err = check_teardown();
+    err = check_teardown(EV_A);
     if (err != 0)
-        log_error("check_teardown: %s", strerror(-err));
+        log_error("check_teardown: %s", strerror(errno));
 
     return 0;
 }
