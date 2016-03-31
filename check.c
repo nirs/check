@@ -48,6 +48,7 @@ static void check_cb(EV_P_ ev_timer *w, int revents);
 static void check_reap(EV_P_ ev_io *w, int revents);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
+static int checkers_count;
 static complete_cb complete;
 static io_context_t ioctx;
 static int ioeventfd = -1;
@@ -179,6 +180,7 @@ void check_start(EV_P_ char *path, int interval)
     ev_timer_start(EV_A_ &ck->timer);
 
     TAILQ_INSERT_TAIL(&checkers, ck, entries);
+    checkers_count++;
 }
 
 void check_stop(EV_P_ char *path)
@@ -205,6 +207,8 @@ static void check_stopped(struct check *ck)
 {
     log_debug("checker '%s' stopped", ck->path);
     TAILQ_REMOVE(&checkers, ck, entries);
+    checkers_count--;
+    assert(checkers_count >= 0 && "negative number of checkers");
     check_free(ck);
     /* Send stopped event */
     return;
@@ -269,14 +273,16 @@ static void check_reap(EV_P_ ev_io *w, int revents)
         return;
     }
 
-    log_debug("received %d events on eventfd", (int)nevents);
+    int nreap = (int)nevents;
+    assert(nreap <= checkers_count && "unexpected number of events");
+    log_debug("received %d events on eventfd", nreap);
 
     struct timespec timeout = {0};
-    struct io_event events[nevents];
+    struct io_event events[nreap];
     int nready;
 
     do {
-        nready = io_getevents(ioctx, 1, nevents, events, &timeout);
+        nready = io_getevents(ioctx, 1, nreap, events, &timeout);
     } while (nready == -EINTR);
 
     if (nready < 0) {
