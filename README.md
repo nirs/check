@@ -13,9 +13,17 @@ sending events on stdout, and logging messages on stderr.
 
 ## Events
 
-- check PATH DELAY - check PATH completed in DELAY seconds
+- started PATH - path checker for path has started. Sent before the
+  first check was completed. If path is accessible, will be followed
+  soon by "completed" event.
 
-- error PATH TIME CODE - checking patch starting at TIME failed with error code
+- completed PATH DELAY ERROR - checking PATH completed in DELAY seconds with
+  error ERRNO. Non-zero ERRNO means path is not accessible.
+
+- stopped PATH - path checker for path has stopped. No more events will
+  be generated for PATH.
+
+- error PATH ERRNO - "start" or "stop" failed with error ERRNO
 
 ## Logging
 
