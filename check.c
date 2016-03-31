@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <sys/queue.h>
@@ -277,12 +276,11 @@ static void check_reap(EV_P_ ev_io *w, int revents)
     assert(nreap <= checkers_count && "unexpected number of events");
     log_debug("received %d events on eventfd", nreap);
 
-    struct timespec timeout = {0};
     struct io_event events[nreap];
     int nready;
 
     do {
-        nready = io_getevents(ioctx, 1, nreap, events, &timeout);
+        nready = io_getevents(ioctx, 0, nreap, events, NULL);
     } while (nready == -EINTR);
 
     if (nready < 0) {
