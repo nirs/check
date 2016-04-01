@@ -41,10 +41,12 @@ struct check {
 
 static struct check * check_new(char *path, int interval);
 static void check_free(struct check *ck);
-static void check_stopped(struct check *ck);
-
 static void check_cb(EV_P_ ev_timer *w, int revents);
 static void check_reap(EV_P_ ev_io *w, int revents);
+static int check_open_fd(struct check *ck);
+static int check_submit(struct check *ck);
+static void check_completed(struct check *ck, int error);
+static void check_stopped(struct check *ck);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
 static int checkers_count;
@@ -202,58 +204,23 @@ void check_stop(EV_P_ char *path)
     log_debug("not checking '%s'", path);
 }
 
-static void check_stopped(struct check *ck)
-{
-    log_debug("checker '%s' stopped", ck->path);
-    TAILQ_REMOVE(&checkers, ck, entries);
-    checkers_count--;
-    assert(checkers_count >= 0 && "negative number of checkers");
-    check_free(ck);
-    /* Send stopped event */
-    return;
-}
-
 static void check_cb(EV_P_ ev_timer *w, int revents)
 {
     struct check *ck = (struct check *)w;
 
     if (ck->state == WAITING) {
+        ck->state = RUNNING;
         ck->start = ev_time();
         if (ck->fd == -1) {
-            log_debug("opening '%s'", ck->path);
-            ck->fd = open(ck->path, O_RDONLY | O_DIRECT | O_NONBLOCK);
-            if (ck->fd == -1) {
-                int error = errno;
-                log_error("error opening '%s': %s", ck->path, strerror(error));
-                ev_tstamp elapsed = ev_time() - ck->start;
-                complete(ck->path, elapsed, error);
+            if (check_open_fd(ck))
                 return;
-            }
         }
-
-        io_prep_pread(&ck->iocb, ck->fd, ck->buf, pagesize, 0);
-        io_set_eventfd(&ck->iocb, ioeventfd);
-        ck->iocb.data = ck;
-
-        log_debug("submitting read request for '%s'", ck->path);
-        struct iocb *ios[1] = {&ck->iocb};
-        int nios = io_submit(ioctx, 1, ios);
-        if (nios < 1) {
-            log_error("io_submit: %s", strerror(-nios));
-            ev_tstamp elapsed = ev_time() - ck->start;
-            complete(ck->path, elapsed, -nios);
-            return;
-        }
-
-        ev_tstamp elapsed = ev_time() - ck->start;
-        log_debug("submitted read request for '%s' in %.6f seconds",
-                  ck->path, elapsed);
-        ck->state = RUNNING;
+        check_submit(ck);
     } else if (ck->state == RUNNING) {
         ev_tstamp elapsed = ev_time() - ck->start;
         log_error("checker '%s' blocked for %.6f seconds", ck->path, elapsed);
     } else {
-        assert(0 && "invalid state");
+        assert(0 && "invalid state during check callback");
     }
 }
 
@@ -293,17 +260,87 @@ static void check_reap(EV_P_ ev_io *w, int revents)
 
     for (int i = 0; i < nready; i++) {
         struct check *ck = (struct check *)(events[i].obj->data);
-
         if (ck->state == STOPPING) {
             check_stopped(ck);
-            continue;
+        } else if (ck->state == RUNNING) {
+            /* Partial read (res < bufsize) is ok */
+            int res = events[i].res;
+            check_completed(ck, res < 0 ? -res : 0);
+        } else {
+            assert(0 && "invalid state during reap");
         }
-
-        assert(ck->state == RUNNING && "invalid state");
-        ck->state = WAITING;
-        ev_tstamp elapsed = ev_time() - ck->start;
-        /* Partial read (res < bufsize) is ok */
-        int res = events[i].res;
-        complete(ck->path, elapsed, res < 0 ? -res : 0);
     }
+}
+
+static int check_open_fd(struct check *ck)
+{
+    log_debug("opening '%s'", ck->path);
+
+    ev_tstamp start;
+    if (debug_mode)
+        start = ev_time();
+
+    ck->fd = open(ck->path, O_RDONLY | O_DIRECT | O_NONBLOCK);
+
+    if (ck->fd == -1) {
+        int saved_errno = errno;
+        log_error("error opening '%s': %s", ck->path, strerror(errno));
+        check_completed(ck, saved_errno);
+        return -1;
+    }
+
+    if (debug_mode) {
+        ev_tstamp elapsed = ev_time() - start;
+        log_debug("openned '%s' in %.6f seconds", ck->path, elapsed);
+    }
+
+    return 0;
+}
+
+static int check_submit(struct check *ck)
+{
+    log_debug("submitting io for '%s'", ck->path);
+
+    io_prep_pread(&ck->iocb, ck->fd, ck->buf, pagesize, 0);
+    io_set_eventfd(&ck->iocb, ioeventfd);
+    ck->iocb.data = ck;
+
+    ev_tstamp start;
+    if (debug_mode)
+        start = ev_time();
+
+    struct iocb *ios[1] = {&ck->iocb};
+    int nios = io_submit(ioctx, 1, ios);
+
+    if (nios < 1) {
+        log_error("io_submit: %s", strerror(-nios));
+        check_completed(ck, -nios);
+        return -1;
+    }
+
+    if (debug_mode) {
+        ev_tstamp elapsed = ev_time() - start;
+        log_debug("submitted io for '%s' in %.6f seconds",
+                  ck->path, elapsed);
+    }
+
+    return 0;
+}
+
+static void check_completed(struct check *ck, int error)
+{
+    ck->state = WAITING;
+    ev_tstamp elapsed = ev_time() - ck->start;
+    complete(ck->path, elapsed, error);
+}
+
+static void check_stopped(struct check *ck)
+{
+    log_debug("checker '%s' stopped", ck->path);
+    TAILQ_REMOVE(&checkers, ck, entries);
+    checkers_count--;
+    assert(checkers_count >= 0 && "negative number of checkers");
+    check_free(ck);
+    /* Send stopped event */
+    return;
 }
