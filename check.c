@@ -233,6 +233,7 @@ static void check_cb(EV_P_ ev_timer *w, int revents)
 
         io_prep_pread(&ck->iocb, ck->fd, ck->buf, pagesize, 0);
         io_set_eventfd(&ck->iocb, ioeventfd);
+        ck->iocb.data = ck;
 
         log_debug("submitting read request for '%s'", ck->path);
         struct iocb *ios[1] = {&ck->iocb};
@@ -291,10 +292,7 @@ static void check_reap(EV_P_ ev_io *w, int revents)
     log_debug("reaped %d io events", nready);
 
     for (int i = 0; i < nready; i++) {
-        struct iocb *iocb = events[i].obj;
-        /* TODO: Add macro for this */
-        struct check *ck = (struct check *)
-            (((char *)iocb) - offsetof(struct check, iocb));
+        struct check *ck = (struct check *)(events[i].obj->data);
 
         if (ck->state == STOPPING) {
             check_stopped(ck);
