@@ -119,8 +119,8 @@ static void
 check_complete(char *path, ev_tstamp delay, int error)
 {
     /* TODO: send response to parent */
-    log_debug("check complete: path=%s delay=%.6f error=%d",
-              path, delay, error);
+    log_info("check complete: path=%s delay=%.6f error=%d",
+             path, delay, error);
 }
 
 int main(int argc, char *argv[])
