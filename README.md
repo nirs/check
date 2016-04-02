@@ -17,8 +17,9 @@ sending events on stdout, and logging messages on stderr.
   first check was completed. If path is accessible, will be followed
   soon by "completed" event.
 
-- completed PATH DELAY ERROR - checking PATH completed in DELAY seconds with
-  error ERRNO. Non-zero ERRNO means path is not accessible.
+- completed PATH ERRNO [DELAY] - checking PATH completed with error
+  ERRNO. If the check is successful (ERRNO=0), DELAY is the read delay
+  in seconds.
 
 - stopped PATH - path checker for path has stopped. No more events will
   be generated for PATH.

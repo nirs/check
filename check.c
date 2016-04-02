@@ -47,7 +47,7 @@ static void check_cb(EV_P_ ev_timer *w, int revents);
 static void check_reap(EV_P_ ev_io *w, int revents);
 static int check_open_fd(struct check *ck);
 static int check_submit(struct check *ck);
-static void check_completed(struct check *ck, ev_tstamp when, int error);
+static void check_completed(struct check *ck, int error, ev_tstamp when);
 static void check_stopped(struct check *ck);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
@@ -277,7 +277,7 @@ static void check_reap(EV_P_ ev_io *w, int revents)
         } else if (ck->state == RUNNING) {
             /* Partial read (res < bufsize) is ok */
             int res = events[i].res;
-            check_completed(ck, now, res < 0 ? -res : 0);
+            check_completed(ck, res < 0 ? -res : 0, now);
         } else {
             assert(0 && "invalid state during reap");
         }
@@ -297,7 +297,7 @@ static int check_open_fd(struct check *ck)
     if (ck->fd == -1) {
         int saved_errno = errno;
         log_error("error opening '%s': %s", ck->path, strerror(errno));
-        check_completed(ck, ev_time(), saved_errno);
+        check_completed(ck, saved_errno, 0);
         return -1;
     }
 
@@ -326,7 +326,7 @@ static int check_submit(struct check *ck)
 
     if (nios < 1) {
         log_error("io_submit: %s", strerror(-nios));
-        check_completed(ck, ev_time(), -nios);
+        check_completed(ck, -nios, 0);
         return -1;
     }
 
@@ -339,12 +339,13 @@ static int check_submit(struct check *ck)
     return 0;
 }
 
-static void check_completed(struct check *ck, ev_tstamp when, int error)
+static void check_completed(struct check *ck, int error, ev_tstamp when)
 {
     ck->state = WAITING;
     running--;
     assert(running >= 0 && "negative number of running requests");
-    complete(ck->path, when - ck->start, error);
+    ev_tstamp delay = error == 0 ? when - ck->start : 0;
+    complete(ck->path, error, delay);
 }
 
 static void check_stopped(struct check *ck)

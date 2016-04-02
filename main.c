@@ -116,11 +116,14 @@ line_received(char *line)
 }
 
 static void
-check_complete(char *path, ev_tstamp delay, int error)
+check_complete(char *path, int error, ev_tstamp delay)
 {
     /* TODO: send response to parent */
-    log_info("check complete: path=%s delay=%.6f error=%d",
-             path, delay, error);
+    if (error)
+        log_error("check complete: path=%s error=%d", path, error);
+    else
+        log_info("check complete: path=%s error=%d delay=%.6f",
+                 path, error, delay);
 }
 
 int main(int argc, char *argv[])

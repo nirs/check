@@ -9,7 +9,7 @@
 #ifndef CHECK_H
 #define CHECK_H
 
-typedef void (*complete_cb)(char *path, ev_tstamp delay, int error);
+typedef void (*complete_cb)(char *path, int error, ev_tstamp delay);
 
 int check_setup(EV_P_ int max_paths, complete_cb cb);
 int check_teardown(EV_P);
