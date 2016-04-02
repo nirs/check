@@ -19,3 +19,5 @@ with open("check.log", "a") as log:
         p.wait()
     except KeyboardInterrupt:
         pass
+    for path in paths:
+        p.stdin.write("stop %s\n" % path)
