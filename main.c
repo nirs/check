@@ -120,7 +120,7 @@ check_complete(char *path, int error, ev_tstamp delay)
 {
     /* TODO: send response to parent */
     if (error)
-        log_error("check complete: path=%s error=%d", path, error);
+        log_info("check complete: path=%s error=%d", path, error);
     else
         log_info("check complete: path=%s error=%d delay=%.6f",
                  path, error, delay);

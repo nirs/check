@@ -284,6 +284,9 @@ static void check_reap(EV_P_ ev_io *w, int revents)
         } else if (ck->state == RUNNING) {
             /* Partial read (res < bufsize) is ok */
             int res = events[i].res;
+            if (res < 0)
+                log_error("checking '%s' failed: %s",
+                          ck->path, strerror(-res));
             check_completed(ck, res < 0 ? -res : 0, now);
         } else {
             assert(0 && "invalid state during reap");
