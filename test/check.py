@@ -12,7 +12,7 @@ with open("check.log", "a") as log:
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE,
                          stderr=log)
-    paths = glob.glob("/dev/disk/by-id/dm-uuid-mpath-*")
+    paths = glob.glob("/rhev/data-center/mnt/*/*/dom_md/metadata")
     for path in paths:
         p.stdin.write("start %s 1\n" % path)
     try:
