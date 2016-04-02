@@ -351,9 +351,17 @@ static void check_completed(struct check *ck, int error, ev_tstamp when)
 static void check_stopped(struct check *ck)
 {
     log_debug("checker '%s' stopped", ck->path);
+
+    if (ck->state == STOPPING) {
+        running--;
+        assert(running >= 0 && "negative number of running requests");
+    }
+
     TAILQ_REMOVE(&checkers, ck, entries);
+
     checkers_count--;
     assert(checkers_count >= 0 && "negative number of checkers");
+
     check_free(ck);
     /* Send stopped event */
     return;
