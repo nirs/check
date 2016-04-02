@@ -197,9 +197,11 @@ void check_stop(EV_P_ char *path)
         if (strcmp(ck->path, path) == 0) {
             ev_timer_stop(EV_A_ &ck->timer);
             if (ck->state == RUNNING) {
-                log_debug("checker '%s' is running, will stop when complete",
-                          ck->path);
                 ck->state = STOPPING;
+                /* io_cancel fail with EINVAL with both iSCSI and NFS, so we
+                 * can only wait. */
+                log_debug("checker '%s' is running, waiting until io "
+                          "completes", ck->path);
             } else if (ck->state == WAITING) {
                 check_stopped(ck);
             } else if (ck->state == STOPPING) {
