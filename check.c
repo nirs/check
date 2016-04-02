@@ -45,7 +45,7 @@ static void check_cb(EV_P_ ev_timer *w, int revents);
 static void check_reap(EV_P_ ev_io *w, int revents);
 static int check_open_fd(struct check *ck);
 static int check_submit(struct check *ck);
-static void check_completed(struct check *ck, int error);
+static void check_completed(struct check *ck, ev_tstamp when, int error);
 static void check_stopped(struct check *ck);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
@@ -240,6 +240,10 @@ static void check_reap(EV_P_ ev_io *w, int revents)
         return;
     }
 
+    /* We don't have timing information per request, assume all of them
+     * finished now. */
+    ev_tstamp now = ev_time();
+
     int nreap = (int)nevents;
     assert(nreap <= checkers_count && "unexpected number of events");
     log_debug("received %d events on eventfd", nreap);
@@ -265,7 +269,7 @@ static void check_reap(EV_P_ ev_io *w, int revents)
         } else if (ck->state == RUNNING) {
             /* Partial read (res < bufsize) is ok */
             int res = events[i].res;
-            check_completed(ck, res < 0 ? -res : 0);
+            check_completed(ck, now, res < 0 ? -res : 0);
         } else {
             assert(0 && "invalid state during reap");
         }
@@ -285,7 +289,7 @@ static int check_open_fd(struct check *ck)
     if (ck->fd == -1) {
         int saved_errno = errno;
         log_error("error opening '%s': %s", ck->path, strerror(errno));
-        check_completed(ck, saved_errno);
+        check_completed(ck, ev_time(), saved_errno);
         return -1;
     }
 
@@ -314,7 +318,7 @@ static int check_submit(struct check *ck)
 
     if (nios < 1) {
         log_error("io_submit: %s", strerror(-nios));
-        check_completed(ck, -nios);
+        check_completed(ck, ev_time(), -nios);
         return -1;
     }
 
@@ -327,11 +331,10 @@ static int check_submit(struct check *ck)
     return 0;
 }
 
-static void check_completed(struct check *ck, int error)
+static void check_completed(struct check *ck, ev_tstamp when, int error)
 {
     ck->state = WAITING;
-    ev_tstamp elapsed = ev_time() - ck->start;
-    complete(ck->path, elapsed, error);
+    complete(ck->path, when - ck->start, error);
 }
 
 static void check_stopped(struct check *ck)
