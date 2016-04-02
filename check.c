@@ -196,10 +196,17 @@ void check_stop(EV_P_ char *path)
     TAILQ_FOREACH(ck, &checkers, entries) {
         if (strcmp(ck->path, path) == 0) {
             ev_timer_stop(EV_A_ &ck->timer);
-            if (ck->state == RUNNING)
+            if (ck->state == RUNNING) {
+                log_debug("checker '%s' is running, will stop when complete",
+                          ck->path);
                 ck->state = STOPPING;
-            else
+            } else if (ck->state == WAITING) {
                 check_stopped(ck);
+            } else if (ck->state == STOPPING) {
+                log_debug("stopping '%s' in progress", ck->path);
+            } else {
+                assert(0 && "invalid state during stop");
+            }
             return;
         }
     }
