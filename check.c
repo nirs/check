@@ -25,6 +25,8 @@
 #include "log.h"
 #include "check.h"
 
+#define REAP_RUNNING 10
+
 enum {WAITING, RUNNING, STOPPING};
 
 struct check {
@@ -50,6 +52,7 @@ static void check_stopped(struct check *ck);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
 static int checkers_count;
+static int running;
 static complete_cb complete;
 static io_context_t ioctx;
 static int ioeventfd = -1;
@@ -211,11 +214,16 @@ static void check_cb(EV_P_ ev_timer *w, int revents)
     if (ck->state == WAITING) {
         ck->state = RUNNING;
         ck->start = ev_time();
+        running++;
         if (ck->fd == -1) {
             if (check_open_fd(ck))
                 return;
         }
         check_submit(ck);
+        /* If we have large number of running requests, some are likely to be
+         * ready now. */
+        if (running > REAP_RUNNING)
+            check_reap(EV_A_ &ioeventfd_watcher, 0);
     } else if (ck->state == RUNNING) {
         ev_tstamp elapsed = ev_time() - ck->start;
         log_error("checker '%s' blocked for %.6f seconds", ck->path, elapsed);
@@ -334,6 +342,8 @@ static int check_submit(struct check *ck)
 static void check_completed(struct check *ck, ev_tstamp when, int error)
 {
     ck->state = WAITING;
+    running--;
+    assert(running >= 0 && "negative number of running requests");
     complete(ck->path, when - ck->start, error);
 }
 
