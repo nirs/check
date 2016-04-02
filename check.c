@@ -324,11 +324,14 @@ static int check_submit(struct check *ck)
     struct iocb *ios[1] = {&ck->iocb};
     int nios = io_submit(ioctx, 1, ios);
 
-    if (nios < 1) {
+    if (nios < 0) {
         log_error("io_submit: %s", strerror(-nios));
         check_completed(ck, -nios, 0);
         return -1;
     }
+
+    /* Not sure if this can fail, so lets assert */
+    assert(nios == 1 && "partial submit");
 
     if (debug_mode) {
         ev_tstamp elapsed = ev_time() - start;
