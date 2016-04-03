@@ -41,6 +41,7 @@ struct check {
     void *buf;
 };
 
+static struct check * check_lookup(char *path);
 static struct check * check_new(char *path, int interval);
 static void check_free(struct check *ck);
 static void check_cb(EV_P_ ev_timer *w, int revents);
@@ -161,16 +162,14 @@ static void check_free(struct check *ck)
 
 void check_start(EV_P_ char *path, int interval)
 {
-    struct check *ck;
 
     log_info("start checking path '%s' every %d seconds", path, interval);
 
-    TAILQ_FOREACH(ck, &checkers, entries) {
-        if (strcmp(ck->path, path) == 0) {
-            log_error("already checking path '%s'", path);
-            /* TODO: return error to caller */
-            return;
-        }
+    struct check *ck = check_lookup(path);
+    if (ck) {
+        log_error("already checking path '%s'", path);
+        /* TODO: return error to caller */
+        return;
     }
 
     ck = check_new(path, interval);
@@ -189,31 +188,39 @@ void check_start(EV_P_ char *path, int interval)
 
 void check_stop(EV_P_ char *path)
 {
-    struct check *ck;
-
     log_info("stop checking path '%s'", path);
 
-    TAILQ_FOREACH(ck, &checkers, entries) {
-        if (strcmp(ck->path, path) == 0) {
-            ev_timer_stop(EV_A_ &ck->timer);
-            if (ck->state == RUNNING) {
-                ck->state = STOPPING;
-                /* io_cancel fail with EINVAL with both iSCSI and NFS, so we
-                 * can only wait. */
-                log_debug("checker '%s' is running, waiting until io "
-                          "completes", ck->path);
-            } else if (ck->state == WAITING) {
-                check_stopped(ck);
-            } else if (ck->state == STOPPING) {
-                log_debug("stopping '%s' in progress", ck->path);
-            } else {
-                assert(0 && "invalid state during stop");
-            }
-            return;
-        }
+    struct check *ck = check_lookup(path);
+    if (ck == NULL) {
+        log_debug("not checking '%s'", path);
+        return;
     }
 
-    log_debug("not checking '%s'", path);
+    ev_timer_stop(EV_A_ &ck->timer);
+
+    if (ck->state == RUNNING) {
+        ck->state = STOPPING;
+        /* io_cancel fail with EINVAL with both iSCSI and NFS, so we can only
+         * wait. */
+        log_debug("checker '%s' is running, waiting until io completes",
+                  ck->path);
+    } else if (ck->state == WAITING) {
+        check_stopped(ck);
+    } else if (ck->state == STOPPING) {
+        log_debug("stopping '%s' in progress", ck->path);
+    } else {
+        assert(0 && "invalid state during stop");
+    }
+}
+
+static struct check *check_lookup(char *path)
+{
+    struct check *ck;
+    TAILQ_FOREACH(ck, &checkers, entries) {
+        if (strcmp(ck->path, path) == 0)
+            return ck;
+    }
+    return NULL;
 }
 
 static void check_cb(EV_P_ ev_timer *w, int revents)
