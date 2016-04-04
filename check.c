@@ -13,17 +13,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/eventfd.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <ev.h>
 #include <libaio.h>
 
-#include "log.h"
 #include "check.h"
+#include "log.h"
 
 #define REAP_RUNNING 10
 
@@ -162,7 +162,6 @@ static void check_free(struct check *ck)
 
 void check_start(EV_P_ char *path, int interval)
 {
-
     log_info("start checking path '%s' every %d seconds", path, interval);
 
     struct check *ck = check_lookup(path);
@@ -363,8 +362,10 @@ static int check_submit(struct check *ck)
 static void check_completed(struct check *ck, int error, ev_tstamp when)
 {
     ck->state = WAITING;
+
     running--;
     assert(running >= 0 && "negative number of running requests");
+
     ev_tstamp delay = error == 0 ? when - ck->start : 0;
     complete(ck->path, error, delay);
 }

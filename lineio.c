@@ -9,8 +9,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#include <unistd.h>  /* read */
 #include <string.h>  /* strsep */
+#include <unistd.h>  /* read */
+
 #include <ev.h>
 
 #include "lineio.h"

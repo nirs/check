@@ -16,8 +16,8 @@
 
 #include <ev.h>
 
-#include "lineio.h"
 #include "check.h"
+#include "lineio.h"
 #include "log.h"
 
 #define MAX_CMD_ARGS 3
@@ -25,8 +25,7 @@
 
 int debug_mode;
 
-static int
-set_nonblocking(int fd)
+static int set_nonblocking(int fd)
 {
     int flags;
     int err;
@@ -42,8 +41,7 @@ set_nonblocking(int fd)
     return 0;
 }
 
-static int
-split(char *cmd, char *args[], int n)
+static int split(char *cmd, char *args[], int n)
 {
     char *next = cmd;
     int i;
@@ -54,8 +52,7 @@ split(char *cmd, char *args[], int n)
     return i;
 }
 
-static void
-line_received(char *line)
+static void line_received(char *line)
 {
     struct ev_loop *loop = EV_DEFAULT;
     char *argv[MAX_CMD_ARGS] = {0};
@@ -115,8 +112,7 @@ line_received(char *line)
     }
 }
 
-static void
-check_complete(char *path, int error, ev_tstamp delay)
+static void check_complete(char *path, int error, ev_tstamp delay)
 {
     /* TODO: send response to parent */
     if (error)
