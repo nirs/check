@@ -6,12 +6,12 @@
  * of the GNU General Public License v2 or (at your option) any later version.
  */
 
-#ifndef LINEIO_H
-#define LINEIO_H
+#ifndef READER_H
+#define READER_H
 
 typedef void (*received_cb)(char *);
 
-struct lineio {
+struct reader {
     ev_io watcher;
     int fd;
     received_cb cb;
@@ -19,12 +19,12 @@ struct lineio {
     char buf[4096];
 };
 
-void lineio_init(struct lineio *lio, int fd, received_cb cb);
-void lineio_clear(struct lineio *lio);
-void lineio_shift(struct lineio *lio, char *partial_line);
-ssize_t lineio_available(struct lineio *lio);
-int lineio_read(struct lineio *lio);
-void lineio_process(struct lineio *lio);
-void lineio_cb(EV_P_ ev_io *w, int revents);
+void reader_init(struct reader *r, int fd, received_cb cb);
+void reader_clear(struct reader *r);
+void reader_shift(struct reader *r, char *partial_line);
+ssize_t reader_available(struct reader *r);
+int reader_read(struct reader *r);
+void reader_process(struct reader *r);
+void reader_cb(EV_P_ ev_io *w, int revents);
 
 #endif

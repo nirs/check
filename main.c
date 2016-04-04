@@ -17,7 +17,7 @@
 #include <ev.h>
 
 #include "check.h"
-#include "lineio.h"
+#include "reader.h"
 #include "log.h"
 
 #define MAX_CMD_ARGS 3
@@ -125,7 +125,7 @@ static void check_complete(char *path, int error, ev_tstamp delay)
 int main(int argc, char *argv[])
 {
     int err;
-    struct lineio lineio;
+    struct reader reader;
     struct ev_loop *loop = EV_DEFAULT;
 
     if (argc > 1)
@@ -146,10 +146,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    lineio_init(&lineio, STDIN_FILENO, line_received);
+    reader_init(&reader, STDIN_FILENO, line_received);
 
-    ev_io_init(&lineio.watcher, lineio_cb, lineio.fd, EV_READ);
-    ev_io_start(EV_A_ &lineio.watcher);
+    ev_io_init(&reader.watcher, reader_cb, reader.fd, EV_READ);
+    ev_io_start(EV_A_ &reader.watcher);
 
     ev_run(EV_A_ 0);
 

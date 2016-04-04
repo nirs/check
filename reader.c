@@ -14,43 +14,43 @@
 
 #include <ev.h>
 
-#include "lineio.h"
+#include "reader.h"
 #include "log.h"
 
-void lineio_init(struct lineio *lio, int fd, received_cb cb)
+void reader_init(struct reader *r, int fd, received_cb cb)
 {
-    lio->fd = fd;
-    lio->cb = cb;
-    lineio_clear(lio);
+    r->fd = fd;
+    r->cb = cb;
+    reader_clear(r);
 }
 
-void lineio_clear(struct lineio *lio)
+void reader_clear(struct reader *r)
 {
-    lio->end = lio->buf;
-    *lio->end = 0;
+    r->end = r->buf;
+    *r->end = 0;
 }
 
-void lineio_shift(struct lineio *lio, char *partial_line)
+void reader_shift(struct reader *r, char *partial_line)
 {
-    assert(partial_line > lio->buf && partial_line < lio->end);
+    assert(partial_line > r->buf && partial_line < r->end);
 
-    ssize_t len = lio->end - partial_line;
-    memmove(lio->buf, partial_line, len);
-    lio->end = lio->buf + len;
-    *lio->end = 0;
+    ssize_t len = r->end - partial_line;
+    memmove(r->buf, partial_line, len);
+    r->end = r->buf + len;
+    *r->end = 0;
 }
 
-ssize_t lineio_available(struct lineio *lio)
+ssize_t reader_available(struct reader *r)
 {
-    return lio->buf + sizeof(lio->buf) - lio->end - 1;
+    return r->buf + sizeof(r->buf) - r->end - 1;
 }
 
-int lineio_read(struct lineio *lio)
+int reader_read(struct reader *r)
 {
     ssize_t nread;
 
     do {
-        nread = read(lio->fd, lio->end, lineio_available(lio));
+        nread = read(r->fd, r->end, reader_available(r));
     } while (nread == -1 && errno == EINTR);
 
     if (nread == -1) {
@@ -64,17 +64,17 @@ int lineio_read(struct lineio *lio)
         return -1;
     }
 
-    lio->end += nread;
-    *lio->end = 0;
+    r->end += nread;
+    *r->end = 0;
 
-    log_debug("read %ld bytes len=%ld", nread, lio->end - lio->buf);
+    log_debug("read %ld bytes len=%ld", nread, r->end - r->buf);
 
     return nread;
 }
 
-void lineio_process(struct lineio *lio)
+void reader_process(struct reader *r)
 {
-    char *next = lio->buf;
+    char *next = r->buf;
     char *line;
 
     for (;;) {
@@ -82,25 +82,25 @@ void lineio_process(struct lineio *lio)
 
         if (next == NULL) {
 
-            if (line == lio->buf && lineio_available(lio) == 0) {
+            if (line == r->buf && reader_available(r) == 0) {
                 /* Buffer full without newline in sight - drop entire buffer */
                 log_error("discarding excessive long line");
-                lineio_clear(lio);
+                reader_clear(r);
                 /* TODO: send error to caller */
                 return;
             }
 
-            if (line == lio->end) {
+            if (line == r->end) {
                 /* No more data to process */
                 log_debug("all data processed");
-                lineio_clear(lio);
+                reader_clear(r);
                 return;
             }
 
-            if (line > lio->buf) {
+            if (line > r->buf) {
                 /* Shit partial line to start fo buffer */
                 log_debug("shift partial line: '%s'", line);
-                lineio_shift(lio, line);
+                reader_shift(r, line);
                 return;
             }
 
@@ -109,22 +109,22 @@ void lineio_process(struct lineio *lio)
             return;
         }
 
-        lio->cb(line);
+        r->cb(line);
     }
 }
 
-void lineio_cb(EV_P_ ev_io *w, int revents)
+void reader_cb(EV_P_ ev_io *w, int revents)
 {
-    struct lineio *lio = (struct lineio *)w;
+    struct reader *r = (struct reader *)w;
     int nread;
 
-    nread = lineio_read(lio);
+    nread = reader_read(r);
     if (nread == -1) {
-        perror("ERROR lineio_read");
+        perror("ERROR reader_read");
         ev_break(EV_A_ EVBREAK_ALL);
         return;
     }
 
     if (nread)
-        lineio_process(lio);
+        reader_process(r);
 }
