@@ -258,9 +258,8 @@ static void check_reap(EV_P_ ev_io *w, int revents)
     } while (err == -1 && errno == EINTR);
 
     if (err) {
-        if (errno == EAGAIN)
-            return;
-        log_error("eventfd_read: %s", strerror(errno));
+        if (errno != EAGAIN)
+            log_error("eventfd_read: %s", strerror(errno));
         return;
     }
 
@@ -386,5 +385,4 @@ static void check_stopped(struct check *ck)
 
     check_free(ck);
     /* Send stopped event */
-    return;
 }
