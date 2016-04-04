@@ -15,7 +15,7 @@ struct reader {
     ev_io watcher;
     int fd;
     received_cb cb;
-    char *end;
+    ssize_t len;
     char buf[4096];
 };
 

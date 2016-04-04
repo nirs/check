@@ -26,23 +26,24 @@ void reader_init(struct reader *r, int fd, received_cb cb)
 
 void reader_clear(struct reader *r)
 {
-    r->end = r->buf;
-    *r->end = 0;
+    r->len = 0;
+    r->buf[r->len] = 0;
 }
 
 void reader_shift(struct reader *r, char *partial_line)
 {
-    assert(partial_line > r->buf && partial_line < r->end);
+    assert(partial_line > r->buf && partial_line < r->buf + r->len);
 
-    ssize_t len = r->end - partial_line;
+    ssize_t len = r->buf + r->len - partial_line;
     memmove(r->buf, partial_line, len);
-    r->end = r->buf + len;
-    *r->end = 0;
+
+    r->len = len;
+    r->buf[r->len] = 0;
 }
 
 ssize_t reader_available(struct reader *r)
 {
-    return r->buf + sizeof(r->buf) - r->end - 1;
+    return sizeof(r->buf) - r->len - 1;
 }
 
 int reader_read(struct reader *r)
@@ -50,7 +51,7 @@ int reader_read(struct reader *r)
     ssize_t nread;
 
     do {
-        nread = read(r->fd, r->end, reader_available(r));
+        nread = read(r->fd, r->buf + r->len, reader_available(r));
     } while (nread == -1 && errno == EINTR);
 
     if (nread == -1) {
@@ -64,10 +65,10 @@ int reader_read(struct reader *r)
         return -1;
     }
 
-    r->end += nread;
-    *r->end = 0;
+    r->len += nread;
+    r->buf[r->len] = 0;
 
-    log_debug("read %ld bytes len=%ld", nread, r->end - r->buf);
+    log_debug("read %ld bytes len=%ld", nread, r->len);
 
     return nread;
 }
@@ -90,7 +91,7 @@ void reader_process(struct reader *r)
                 return;
             }
 
-            if (line == r->end) {
+            if (line == r->buf + r->len) {
                 /* No more data to process */
                 log_debug("all data processed");
                 reader_clear(r);
