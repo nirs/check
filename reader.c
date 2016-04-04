@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>  /* strsep */
 #include <unistd.h>  /* read */
 
@@ -17,11 +18,25 @@
 #include "reader.h"
 #include "log.h"
 
-void reader_init(struct reader *r, int fd, received_cb cb)
+int reader_init(struct reader *r, int fd, size_t bufsize, received_cb cb)
 {
     r->fd = fd;
     r->cb = cb;
+    r->bufsize = bufsize;
+
+    r->buf = malloc(r->bufsize);
+    if (r->buf == NULL)
+        return -1;
+
     reader_clear(r);
+
+    return 0;
+}
+
+void reader_destroy(struct reader *r)
+{
+    free(r->buf);
+    r->buf = NULL;
 }
 
 void reader_clear(struct reader *r)
@@ -43,7 +58,7 @@ void reader_shift(struct reader *r, char *partial_line)
 
 ssize_t reader_available(struct reader *r)
 {
-    return sizeof(r->buf) - r->len - 1;
+    return r->bufsize - r->len - 1;
 }
 
 int reader_read(struct reader *r)

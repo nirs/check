@@ -15,11 +15,13 @@ struct reader {
     ev_io watcher;
     int fd;
     received_cb cb;
+    size_t bufsize;
     ssize_t len;
-    char buf[4096];
+    char *buf;
 };
 
-void reader_init(struct reader *r, int fd, received_cb cb);
+int reader_init(struct reader *r, int fd, size_t bufsize, received_cb cb);
+void reader_destroy(struct reader *r);
 void reader_clear(struct reader *r);
 void reader_shift(struct reader *r, char *partial_line);
 ssize_t reader_available(struct reader *r);

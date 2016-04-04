@@ -146,7 +146,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    reader_init(&reader, STDIN_FILENO, line_received);
+    err = reader_init(&reader, STDIN_FILENO, 4096, line_received);
+    if (err) {
+        log_error("Cannot initialize reader: %s", strerror(errno));
+        return 1;
+    }
 
     ev_io_init(&reader.watcher, reader_cb, reader.fd, EV_READ);
     ev_io_start(EV_A_ &reader.watcher);
@@ -154,6 +158,8 @@ int main(int argc, char *argv[])
     ev_run(EV_A_ 0);
 
     log_info("terminated");
+
+    reader_destroy(&reader);
 
     err = check_teardown(EV_A);
     if (err != 0)
