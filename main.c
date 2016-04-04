@@ -52,6 +52,22 @@ static int split(char *cmd, char *args[], int n)
     return i;
 }
 
+void reader_cb(EV_P_ ev_io *w, int revents)
+{
+    struct reader *r = (struct reader *)w;
+    int nread;
+
+    nread = reader_read(r);
+    if (nread == -1) {
+        perror("ERROR reader_read");
+        ev_break(EV_A_ EVBREAK_ALL);
+        return;
+    }
+
+    if (nread)
+        reader_process(r);
+}
+
 static void line_received(char *line)
 {
     struct ev_loop *loop = EV_DEFAULT;

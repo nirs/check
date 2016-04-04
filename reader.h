@@ -27,6 +27,5 @@ void reader_shift(struct reader *r, char *partial_line);
 ssize_t reader_available(struct reader *r);
 int reader_read(struct reader *r);
 void reader_process(struct reader *r);
-void reader_cb(EV_P_ ev_io *w, int revents);
 
 #endif
