@@ -7,16 +7,18 @@
 import glob
 import random
 import subprocess
+import sys
 import time
 
 with open("check.log", "a") as log:
-    p = subprocess.Popen(["./check", "-d"],
+    # Use current stdout to consume process output
+    p = subprocess.Popen(["./check"] + sys.argv[1:],
                          stdin=subprocess.PIPE,
-                         stdout=subprocess.PIPE,
                          stderr=log)
     paths = glob.glob("/rhev/data-center/mnt/*/*/dom_md/metadata")
     for path in paths:
         p.stdin.write("start %s 10\n" % path)
+        p.stdin.flush()
         time.sleep(random.random() * 0.1)
     try:
         p.wait()

@@ -6,6 +6,7 @@
  * of the GNU General Public License v2 or (at your option) any later version.
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -22,6 +23,8 @@
 
 #define MAX_CMD_ARGS 3
 #define MAX_PATHS 128
+
+static void send_event(char *event, char *path, int error, ev_tstamp delay);
 
 int debug_mode;
 
@@ -78,7 +81,7 @@ static void line_received(char *line)
     char *cmd = argv[0];
     if (cmd == NULL) {
         log_error("empty command");
-        /* TODO: send error to caller? */
+        send_event("-", "-", EINVAL, 0);
         return;
     }
 
@@ -86,14 +89,14 @@ static void line_received(char *line)
         char *path = argv[1];
         if (path == NULL) {
             log_error("path required");
-            /* TODO: send error to caller? */
+            send_event(cmd, "-", EINVAL, 0);
             return;
         }
 
         char *interval_string = argv[2];
         if (interval_string == NULL) {
             log_error("interval required");
-            /* TODO: send error to caller? */
+            send_event(cmd, path, EINVAL, 0);
             return;
         }
 
@@ -102,12 +105,12 @@ static void line_received(char *line)
         if (interval_string == endp || *endp != 0) {
             /* Not converted, or trailing characters */
             log_error("invalid interval: '%s'", interval_string);
-            /* TODO: send error to caller? */
+            send_event(cmd, path, EINVAL, 0);
             return;
         }
         if (interval < 0 || interval == INT_MAX) {
             log_error("interval out of range: '%s'", interval_string);
-            /* TODO: send error to caller? */
+            send_event(cmd, path, EINVAL, 0);
             return;
         }
 
@@ -116,26 +119,53 @@ static void line_received(char *line)
         char *path = argv[1];
         if (path == NULL) {
             log_error("path required");
-            /* TODO: send error to caller? */
+            send_event(cmd, "-", EINVAL, 0);
             return;
         }
 
         check_stop(EV_A_ path);
     } else {
         log_error("invalid command: '%s'", cmd);
-        /* TODO: send error to caller? */
+        send_event(cmd, "-", EINVAL, 0);
         return;
     }
 }
 
-static void check_complete(char *path, int error, ev_tstamp delay)
+static void send_event(char *event, char *path, int error, ev_tstamp delay)
 {
-    /* TODO: send response to parent */
-    if (error)
-        log_info("check complete: path=%s error=%d", path, error);
+    log_debug("check: event=%s path=%s error=%d delay=%f",
+              event, path, error, delay);
+
+    char buf[1100];
+    ssize_t len;
+
+    if (strcmp(event, "check") == 0 && error == 0)
+        len = snprintf(buf, sizeof(buf), "%s %s %d %.6f\n",
+                       event, path, error, delay);
     else
-        log_info("check complete: path=%s error=%d delay=%.6f",
-                 path, error, delay);
+        len = snprintf(buf, sizeof(buf), "%s %s %d -\n",
+                       event, path, error);
+
+    assert(len > 0 && len < (int)sizeof(buf) && "event truncated");
+
+    ssize_t nwritten;
+    do {
+        nwritten = write(STDOUT_FILENO, buf, len);
+    } while (nwritten == -1 && errno == EINTR);
+
+    /* We relay on pipe buffer (64KiB on Linux) if write fail or we get partial
+     * write, it means the parent process is not listening, so we rather die.
+     * The parent may restart us and try to pay more attention to pipe. */
+
+    if (nwritten == -1) {
+        log_error("error writing to fd %d: %s", STDOUT_FILENO, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (nwritten < len) {
+        log_error("parent is not listening, terminating");
+        exit(EXIT_FAILURE);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -149,7 +179,7 @@ int main(int argc, char *argv[])
 
     log_info("started");
 
-    err = check_setup(EV_A_ MAX_PATHS, check_complete);
+    err = check_setup(EV_A_ MAX_PATHS, send_event);
     if (err != 0) {
         log_error("check_setup: %s", strerror(errno));
         return 1;
@@ -159,6 +189,13 @@ int main(int argc, char *argv[])
     if (err) {
         log_error("Cannot set fd %d nonblocking: %s",
                   STDIN_FILENO, strerror(errno));
+        return 1;
+    }
+
+    err = set_nonblocking(STDOUT_FILENO);
+    if (err) {
+        log_error("Cannot set fd %d nonblocking: %s",
+                  STDOUT_FILENO, strerror(errno));
         return 1;
     }
 

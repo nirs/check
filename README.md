@@ -7,25 +7,57 @@ sending events on stdout, and logging messages on stderr.
 
 ## Commands
 
-- start PATH INTERVAL - start checking PATH every INTERVAL seconds
+- start PATH INTERVAL
 
-- stop PATH - stop checking PATH
+  Start checking PATH every INTERVAL seconds. A "start" event will be
+  sent as response.
+
+- stop PATH
+
+  Stop checking PATH. A "stop" event will be sent when the
+  path checker has stopped.
 
 ## Events
 
-- started PATH - path checker for path has started. Sent before the
-  first check was completed. If path is accessible, will be followed
-  soon by "completed" event.
+Events always have 4 fields. Missing values are represented as "-".
 
-- completed PATH ERRNO [DELAY] - checking PATH completed with error
-  ERRNO. If the check is successful (ERRNO=0), DELAY is the read delay
-  in seconds.
+  NAME PATH ERRNO DATA
 
-- stopped PATH - path checker for path has stopped. No more events will
-  be generated for PATH.
+Available events:
 
-- error PATH ERRNO - "start" or "stop" failed with error ERRNO
+- start PATH ERRNO -
+
+  A "start" command completed. On success (ERRNO=0), a "check" event
+  will be sent when the first check completes.
+
+- check PATH ERRNO [DELAY|-]
+
+  A check for PATH completed. On success (ERRNO=0), DELAY is the read
+  delay in seconds.
+
+- stop PATH ERRNO -
+
+  A "stop" command completed. On success (ERRNO=0), no more "check"
+  events will be sent.
 
 ## Logging
 
 - LEVEL message... - log message at LEVEL
+
+## Example session
+
+```
+time   sender  message
+---------------------------------------------------
+00.000 Client: start /dev/vgname/lvname 10
+00.001 Server: start /dev/vgname/lvname 0 -
+00.002 Server: check /dev/vgname/lvname 0 0.000542
+10.002 Server: check /dev/vgname/lvname 0 0.001023
+20.001 Server: check /dev/vgname/lvname 0 0.000981
+35.345 Server: check /dev/vgname/lvname 5 -
+40.001 Server: check /dev/vgname/lvname 5 -
+50.001 Server: check /dev/vgname/lvname 5 -
+61.655 Server: check /dev/vgname/lvname 0 1.654321
+69.000 Client: stop /dev/vgname/lvname
+69.001 Server: stop /dev/vgname/lvname 0 -
+```

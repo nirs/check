@@ -54,19 +54,19 @@ static void check_stopped(struct check *ck);
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
 static int checkers_count;
 static int running;
-static complete_cb complete;
+static event_cb event;
 static io_context_t ioctx;
 static int ioeventfd = -1;
 static ev_io ioeventfd_watcher;
 static int pagesize;
 static int max_checkers;
 
-int check_setup(EV_P_ int max_paths, complete_cb cb)
+int check_setup(EV_P_ int max_paths, event_cb cb)
 {
     int saved_errno;
 
     max_checkers = max_paths;
-    complete = cb;
+    event = cb;
 
     /* Consider using min align and min transfer for file based paths */
     pagesize = sysconf(_SC_PAGESIZE);
@@ -167,14 +167,15 @@ void check_start(EV_P_ char *path, int interval)
     struct check *ck = check_lookup(path);
     if (ck) {
         log_error("already checking path '%s'", path);
-        /* TODO: return error to caller */
+        event("start", path, EEXIST, 0);
         return;
     }
 
     ck = check_new(path, interval);
     if (ck == NULL) {
-        log_error("check_new: %s", strerror(errno));
-        /* TODO: return error to caller */
+        int saved_errno = errno;
+        log_error("check_new: %s", strerror(saved_errno));
+        event("start", path, saved_errno, 0);
         return;
     }
 
@@ -183,6 +184,7 @@ void check_start(EV_P_ char *path, int interval)
 
     TAILQ_INSERT_TAIL(&checkers, ck, entries);
     checkers_count++;
+    event("start", path, 0, 0);
 }
 
 void check_stop(EV_P_ char *path)
@@ -192,6 +194,7 @@ void check_stop(EV_P_ char *path)
     struct check *ck = check_lookup(path);
     if (ck == NULL) {
         log_debug("not checking '%s'", path);
+        event("stop", path, ENOENT, 0);
         return;
     }
 
@@ -203,10 +206,12 @@ void check_stop(EV_P_ char *path)
          * wait. */
         log_debug("checker '%s' is running, waiting until io completes",
                   ck->path);
+        event("stop", path, EINPROGRESS, 0);
     } else if (ck->state == WAITING) {
         check_stopped(ck);
     } else if (ck->state == STOPPING) {
         log_debug("stopping '%s' in progress", ck->path);
+        event("stop", path, EINPROGRESS, 0);
     } else {
         assert(0 && "invalid state during stop");
     }
@@ -367,7 +372,8 @@ static void check_completed(struct check *ck, int error, ev_tstamp when)
     assert(running >= 0 && "negative number of running requests");
 
     ev_tstamp delay = error == 0 ? when - ck->start : 0;
-    complete(ck->path, error, delay);
+
+    event("check", ck->path, error, delay);
 }
 
 static void check_stopped(struct check *ck)
@@ -384,6 +390,7 @@ static void check_stopped(struct check *ck)
     checkers_count--;
     assert(checkers_count >= 0 && "negative number of checkers");
 
+    event("stop", ck->path, 0, 0);
+
     check_free(ck);
-    /* Send stopped event */
 }
