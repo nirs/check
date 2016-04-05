@@ -38,7 +38,9 @@ Available events:
 - stop PATH ERRNO -
 
   A "stop" command completed. On success (ERRNO=0), no more "check"
-  events will be sent.
+  events will be sent. If path checker is busy and cannot be stopped
+  immediately , an EINPROGRESS error is returned, and a second event
+  will be sent when io has completed and the path checker has stopped.
 
 ## Logging
 
