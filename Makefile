@@ -1,4 +1,4 @@
-src = reader.c main.c check.c
+src = reader.c main.c check.c log.c
 
 CPPFLAGS = -D_GNU_SOURCE
 CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -Werror

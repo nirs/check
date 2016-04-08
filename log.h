@@ -11,8 +11,10 @@
 
 extern int debug_mode;
 
+void log_printf(const char *fmt, ...);
+
 #define log_level(level, fmt, args...) \
-    fprintf(stderr, "%s " fmt "\n", level, ##args)
+    log_printf("%s " fmt "\n", level, ##args)
 
 #define log_debug(fmt, args...) \
 do { \

@@ -199,6 +199,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    err = set_nonblocking(STDERR_FILENO);
+    if (err) {
+        log_error("Cannot set fd %d nonblocking: %s",
+                  STDERR_FILENO, strerror(errno));
+        return 1;
+    }
+
     err = reader_init(&reader, STDIN_FILENO, 4096, line_received);
     if (err) {
         log_error("Cannot initialize reader: %s", strerror(errno));
