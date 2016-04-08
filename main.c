@@ -126,7 +126,6 @@ static void line_received(char *line)
     } else {
         log_error("invalid command: '%s'", cmd);
         send_event(cmd, "-", EINVAL, 0);
-        return;
     }
 }
 
