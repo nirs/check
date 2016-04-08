@@ -53,19 +53,19 @@ static void check_stopped(struct check *ck);
 
 static TAILQ_HEAD(checkhead, check) checkers = TAILQ_HEAD_INITIALIZER(checkers);
 static int checkers_count;
+static int max_checkers;
 static int running;
 static event_cb event;
 static io_context_t ioctx;
 static int ioeventfd = -1;
 static ev_io ioeventfd_watcher;
 static int pagesize;
-static int max_checkers;
 
-int check_setup(EV_P_ int max_paths, event_cb cb)
+int check_setup(EV_P_ int checkers, event_cb cb)
 {
     int saved_errno;
 
-    max_checkers = max_paths;
+    max_checkers = checkers;
     event = cb;
 
     /* Consider using min align and min transfer for file based paths */
