@@ -62,9 +62,8 @@ void reader_cb(EV_P_ ev_io *w, int revents)
 
     nread = reader_read(r);
     if (nread == -1) {
-        perror("ERROR reader_read");
-        ev_break(EV_A_ EVBREAK_ALL);
-        return;
+        log_error("error reading from fd %d: %s", r->fd, strerror(errno));
+        exit(EXIT_FAILURE);
     }
 
     if (nread)
