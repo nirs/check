@@ -171,6 +171,12 @@ void check_start(EV_P_ char *path, int interval)
         return;
     }
 
+    if (checkers_count == max_checkers) {
+        log_error("too many checkers %d", checkers_count);
+        event("start", path, EAGAIN, 0);
+        return;
+    }
+
     ck = check_new(path, interval);
     if (ck == NULL) {
         int saved_errno = errno;
