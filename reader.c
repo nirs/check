@@ -76,7 +76,7 @@ int reader_read(struct reader *r)
     }
 
     if (nread == 0) {
-        errno = ECONNRESET;
+        errno = EPIPE;
         return -1;
     }
 
