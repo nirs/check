@@ -34,6 +34,7 @@ static long max_paths = 128;
 static ev_signal sigint_watcher;
 static ev_signal sigterm_watcher;
 static ev_signal sighup_watcher;
+static int exit_code = 0;
 
 static int set_nonblocking(int fd)
 {
@@ -271,6 +272,7 @@ static void parse_args(int argc, char *argv[])
 static void exit_cb(EV_P_ ev_signal *w, int revents)
 {
     log_info("received signal %d", w->signum);
+    exit_code = 128 + w->signum;
     ev_break(EV_A_ EVBREAK_ALL);
 }
 
@@ -346,5 +348,5 @@ int main(int argc, char *argv[])
     if (err != 0)
         log_error("check_teardown: %s", strerror(errno));
 
-    return 0;
+    return exit_code;
 }
