@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,11 +23,13 @@
 #include "log.h"
 
 #define MAX_CMD_ARGS 3
-#define MAX_PATHS 128
+#define EXIT_USAGE 2
+#define VERSION "0.1"
 
 static void send_event(char *event, char *path, int error, ev_tstamp delay);
 
 int debug_mode;
+static long max_paths = 128;
 
 static int set_nonblocking(int fd)
 {
@@ -166,18 +169,111 @@ static void send_event(char *event, char *path, int error, ev_tstamp delay)
     }
 }
 
+static long sysfs_read_long(const char *path)
+{
+    long result = -1;
+
+    FILE *fp = fopen(path, "r");
+
+    if (fp == NULL) {
+        if (errno != ENOENT) {
+            log_error("error opening %s: %s", path, strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        log_debug("%s not found", path);
+        return -1;
+    }
+
+    char buf[22];
+    char *p = fgets(buf, sizeof(buf), fp);
+    if (p == NULL) {
+        log_debug("cannot read from %s", path);
+        goto cleanup;
+    }
+
+    result = strtol(buf, NULL, 10);
+
+cleanup:
+    fclose(fp);
+
+    return result;
+}
+
+static void usage(void)
+{
+    puts(
+"check - path checking helper\n"
+"\n"
+"usage:\n"
+"  check [-h] [-v] [--debug-mode] [--paths PATHS]\n"
+"\n"
+"arguments:\n"
+"  -h, --help           show this help message and exit\n"
+"  -V, --version        show version and exit\n"
+"  -d, --debug-mode     enable debug-mode (default disabled)\n"
+"  -p, --max-paths PATHS\n"
+"                       maximum number of paths (default 128)"
+    );
+}
+
+static void parse_args(int argc, char *argv[])
+{
+    struct option long_options[] = {
+        {"help",        no_argument,       0, 'h' },
+        {"version",     no_argument,       0, 'V' },
+        {"debug-mode",  no_argument,       0, 'd' },
+        {"max-paths",   required_argument, 0, 'p' },
+        {0, 0, 0, 0 }
+    };
+
+    while (1) {
+        int c;
+        int option_index = 0;
+
+        c = getopt_long(argc, argv, "hVdp:", long_options, &option_index);
+        if (c == -1)
+            break;
+
+        switch (c) {
+        case 'h':
+            usage();
+            exit(EXIT_SUCCESS);
+        case 'V':
+            printf("check version %s\n", VERSION);
+            exit(EXIT_SUCCESS);
+        case 'd':
+            debug_mode = 1;
+            break;
+        case 'p':
+            max_paths = strtol(optarg, NULL, 10);
+            long aio_max_nr = sysfs_read_long("/proc/sys/fs/aio-max-nr");
+            if (max_paths < 0 || (aio_max_nr > 0 && max_paths > aio_max_nr)) {
+                log_error("max_paths out of range (1-%d)\n", aio_max_nr);
+                usage();
+                exit(EXIT_USAGE);
+            }
+            break;
+        case '?':
+        default:
+            usage();
+            exit(EXIT_USAGE);
+        }
+    }
+
+    log_debug("using max_paths=%d, debug_mode=%d", max_paths, debug_mode);
+}
+
 int main(int argc, char *argv[])
 {
     int err;
     struct reader reader;
     struct ev_loop *loop = EV_DEFAULT;
 
-    if (argc > 1)
-        debug_mode = strcmp(argv[1], "-d") == 0;
+    log_info("started (version %s)", VERSION);
 
-    log_info("started");
+    parse_args(argc, argv);
 
-    err = check_setup(EV_A_ MAX_PATHS, send_event);
+    err = check_setup(EV_A_ max_paths, send_event);
     if (err != 0) {
         log_error("check_setup: %s", strerror(errno));
         return 1;
