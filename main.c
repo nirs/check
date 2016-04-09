@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +31,9 @@ static void send_event(char *event, char *path, int error, ev_tstamp delay);
 
 int debug_mode;
 static long max_paths = 128;
+static ev_signal sigint_watcher;
+static ev_signal sigterm_watcher;
+static ev_signal sighup_watcher;
 
 static int set_nonblocking(int fd)
 {
@@ -264,6 +268,26 @@ static void parse_args(int argc, char *argv[])
     log_debug("using max_paths=%d, debug_mode=%d", max_paths, debug_mode);
 }
 
+static void exit_cb(EV_P_ ev_signal *w, int revents)
+{
+    log_info("received signal %d", w->signum);
+    ev_break(EV_A_ EVBREAK_ALL);
+}
+
+void setup_signals(void)
+{
+    struct ev_loop *loop = EV_DEFAULT;
+
+    ev_signal_init(&sigint_watcher, exit_cb, SIGINT);
+    ev_signal_start(EV_A_ &sigint_watcher);
+
+    ev_signal_init(&sigterm_watcher, exit_cb, SIGTERM);
+    ev_signal_start(EV_A_ &sigterm_watcher);
+
+    ev_signal_init(&sighup_watcher, exit_cb, SIGHUP);
+    ev_signal_start(EV_A_ &sighup_watcher);
+}
+
 int main(int argc, char *argv[])
 {
     int err;
@@ -273,6 +297,8 @@ int main(int argc, char *argv[])
     log_info("started (version %s)", VERSION);
 
     parse_args(argc, argv);
+
+    setup_signals();
 
     err = check_setup(EV_A_ max_paths, send_event);
     if (err != 0) {
