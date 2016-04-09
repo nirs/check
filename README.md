@@ -46,6 +46,8 @@ Available events:
 
 - LEVEL message... - log message at LEVEL
 
+The parent process may log the messages using its own logger.
+
 ## Example session
 
 ```
