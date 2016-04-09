@@ -308,28 +308,28 @@ int main(int argc, char *argv[])
 
     err = set_nonblocking(STDIN_FILENO);
     if (err) {
-        log_error("Cannot set fd %d nonblocking: %s",
+        log_error("cannot set fd %d nonblocking: %s",
                   STDIN_FILENO, strerror(errno));
         return 1;
     }
 
     err = set_nonblocking(STDOUT_FILENO);
     if (err) {
-        log_error("Cannot set fd %d nonblocking: %s",
+        log_error("cannot set fd %d nonblocking: %s",
                   STDOUT_FILENO, strerror(errno));
         return 1;
     }
 
     err = set_nonblocking(STDERR_FILENO);
     if (err) {
-        log_error("Cannot set fd %d nonblocking: %s",
+        log_error("cannot set fd %d nonblocking: %s",
                   STDERR_FILENO, strerror(errno));
         return 1;
     }
 
     err = reader_init(&reader, STDIN_FILENO, 4096, line_received);
     if (err) {
-        log_error("Cannot initialize reader: %s", strerror(errno));
+        log_error("cannot initialize reader: %s", strerror(errno));
         return 1;
     }
 
