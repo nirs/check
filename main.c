@@ -169,8 +169,9 @@ static void send_event(char *event, char *path, int error, ev_tstamp delay)
     }
 }
 
-static long sysfs_read_long(const char *path)
+static long read_aio_max_nr(void)
 {
+    const char *path = "/proc/sys/fs/aio-max-nr";
     long result = -1;
 
     FILE *fp = fopen(path, "r");
@@ -246,7 +247,7 @@ static void parse_args(int argc, char *argv[])
             break;
         case 'p':
             max_paths = strtol(optarg, NULL, 10);
-            long aio_max_nr = sysfs_read_long("/proc/sys/fs/aio-max-nr");
+            long aio_max_nr = read_aio_max_nr();
             if (max_paths < 0 || (aio_max_nr > 0 && max_paths > aio_max_nr)) {
                 log_error("max_paths out of range (1-%d)\n", aio_max_nr);
                 usage();
