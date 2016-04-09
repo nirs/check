@@ -20,14 +20,13 @@
 #include <ev.h>
 
 #include "check.h"
-#include "reader.h"
+#include "event.h"
 #include "log.h"
+#include "reader.h"
 
 #define MAX_CMD_ARGS 3
 #define EXIT_USAGE 2
 #define VERSION "0.1"
-
-static void send_event(char *event, char *path, int error, ev_tstamp delay);
 
 int debug_mode;
 static long max_paths = 128;
@@ -88,7 +87,7 @@ static void line_received(char *line)
     char *cmd = argv[0];
     if (cmd == NULL) {
         log_error("empty command");
-        send_event("-", "-", EINVAL, 0);
+        event_printf("-", "-", EINVAL, "-");
         return;
     }
 
@@ -96,14 +95,14 @@ static void line_received(char *line)
         char *path = argv[1];
         if (path == NULL) {
             log_error("path required");
-            send_event(cmd, "-", EINVAL, 0);
+            event_printf(cmd, "-", EINVAL, "-");
             return;
         }
 
         char *interval_string = argv[2];
         if (interval_string == NULL) {
             log_error("interval required");
-            send_event(cmd, path, EINVAL, 0);
+            event_printf(cmd, path, EINVAL, "-");
             return;
         }
 
@@ -112,12 +111,12 @@ static void line_received(char *line)
         if (interval_string == endp || *endp != 0) {
             /* Not converted, or trailing characters */
             log_error("invalid interval: '%s'", interval_string);
-            send_event(cmd, path, EINVAL, 0);
+            event_printf(cmd, path, EINVAL, "-");
             return;
         }
         if (interval < 0 || interval == INT_MAX) {
             log_error("interval out of range: '%s'", interval_string);
-            send_event(cmd, path, EINVAL, 0);
+            event_printf(cmd, path, EINVAL, "-");
             return;
         }
 
@@ -126,51 +125,14 @@ static void line_received(char *line)
         char *path = argv[1];
         if (path == NULL) {
             log_error("path required");
-            send_event(cmd, "-", EINVAL, 0);
+            event_printf(cmd, "-", EINVAL, "-");
             return;
         }
 
         check_stop(EV_A_ path);
     } else {
         log_error("invalid command: '%s'", cmd);
-        send_event(cmd, "-", EINVAL, 0);
-    }
-}
-
-static void send_event(char *event, char *path, int error, ev_tstamp delay)
-{
-    log_debug("check: event=%s path=%s error=%d delay=%f",
-              event, path, error, delay);
-
-    char buf[1100];
-    ssize_t len;
-
-    if (strcmp(event, "check") == 0 && error == 0)
-        len = snprintf(buf, sizeof(buf), "%s %s %d %.6f\n",
-                       event, path, error, delay);
-    else
-        len = snprintf(buf, sizeof(buf), "%s %s %d -\n",
-                       event, path, error);
-
-    assert(len > 0 && len < (int)sizeof(buf) && "event truncated");
-
-    ssize_t nwritten;
-    do {
-        nwritten = write(STDOUT_FILENO, buf, len);
-    } while (nwritten == -1 && errno == EINTR);
-
-    /* We relay on pipe buffer (64KiB on Linux) if write fail or we get partial
-     * write, it means the parent process is not listening, so we rather die.
-     * The parent may restart us and try to pay more attention to pipe. */
-
-    if (nwritten == -1) {
-        log_error("error writing to fd %d: %s", STDOUT_FILENO, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    if (nwritten < len) {
-        log_error("parent is not listening, terminating");
-        exit(EXIT_FAILURE);
+        event_printf(cmd, "-", EINVAL, "-");
     }
 }
 
@@ -302,7 +264,7 @@ int main(int argc, char *argv[])
 
     setup_signals();
 
-    err = check_setup(EV_A_ max_paths, send_event);
+    err = check_setup(EV_A_ max_paths);
     if (err != 0) {
         log_error("check_setup: %s", strerror(errno));
         return 1;

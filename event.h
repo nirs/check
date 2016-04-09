@@ -6,13 +6,11 @@
  * of the GNU General Public License v2 or (at your option) any later version.
  */
 
-#ifndef CHECK_H
-#define CHECK_H
+#ifndef EVENT_H
+#define EVENT_H
 
-int check_setup(EV_P_ int max_paths);
-int check_teardown(EV_P);
-
-void check_start(EV_P_ char *path, int interval);
-void check_stop(EV_P_ char *path);
+/* Event format: NAME PATH ERRNO [DATA|-] */
+void event_printf(const char *name, const char *path, int error,
+                  const char *fmt, ...);
 
 #endif
