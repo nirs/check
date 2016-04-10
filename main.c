@@ -62,7 +62,7 @@ static int split(char *cmd, char *args[], int n)
     return i;
 }
 
-void reader_cb(EV_P_ ev_io *w, int revents)
+static void reader_cb(EV_P_ ev_io *w, int revents)
 {
     struct reader *r = (struct reader *)w;
     int nread;
@@ -238,7 +238,7 @@ static void exit_cb(EV_P_ ev_signal *w, int revents)
     ev_break(EV_A_ EVBREAK_ALL);
 }
 
-void setup_signals(void)
+static void setup_signals(void)
 {
     struct ev_loop *loop = EV_DEFAULT;
 
