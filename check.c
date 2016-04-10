@@ -116,49 +116,6 @@ int check_teardown(EV_P)
     return 0;
 }
 
-static struct check * check_new(char *path, int interval)
-{
-    int saved_errno;
-
-    struct check *ck = malloc(sizeof(*ck));
-    if (ck == NULL)
-        return NULL;
-
-    strncpy(ck->path, path, sizeof(ck->path) - 1);
-    ck->path[sizeof(ck->path) - 1] = 0;
-
-    ck->interval = interval;
-    ck->state = WAITING;
-    ck->fd = -1;
-    ck->buf = NULL;
-
-    int err = posix_memalign(&ck->buf, pagesize, pagesize);
-    if (err) {
-        saved_errno = err;
-        goto error;
-    }
-
-    return ck;
-
-error:
-    free(ck->buf);
-    free(ck);
-    errno = saved_errno;
-    return NULL;
-}
-
-static void check_free(struct check *ck)
-{
-    if (ck == NULL)
-        return;
-
-    if (ck->fd != -1)
-        close(ck->fd);
-
-    free(ck->buf);
-    free(ck);
-}
-
 void check_start(EV_P_ char *path, int interval)
 {
     log_info("start checking path '%s' every %d seconds", path, interval);
@@ -230,6 +187,49 @@ static struct check *check_lookup(char *path)
             return ck;
     }
     return NULL;
+}
+
+static struct check * check_new(char *path, int interval)
+{
+    int saved_errno;
+
+    struct check *ck = malloc(sizeof(*ck));
+    if (ck == NULL)
+        return NULL;
+
+    strncpy(ck->path, path, sizeof(ck->path) - 1);
+    ck->path[sizeof(ck->path) - 1] = 0;
+
+    ck->interval = interval;
+    ck->state = WAITING;
+    ck->fd = -1;
+    ck->buf = NULL;
+
+    int err = posix_memalign(&ck->buf, pagesize, pagesize);
+    if (err) {
+        saved_errno = err;
+        goto error;
+    }
+
+    return ck;
+
+error:
+    free(ck->buf);
+    free(ck);
+    errno = saved_errno;
+    return NULL;
+}
+
+static void check_free(struct check *ck)
+{
+    if (ck == NULL)
+        return;
+
+    if (ck->fd != -1)
+        close(ck->fd);
+
+    free(ck->buf);
+    free(ck);
 }
 
 static void check_cb(EV_P_ ev_timer *w, int revents)
