@@ -122,13 +122,13 @@ void check_start(EV_P_ char *path, int interval)
 
     struct check *ck = check_lookup(path);
     if (ck) {
-        log_error("already checking path '%s'", path);
+        log_warning("already checking path '%s'", path);
         event_printf("start", path, EEXIST, "-");
         return;
     }
 
     if (checkers_count == max_checkers) {
-        log_error("too many checkers %d", checkers_count);
+        log_warning("too many checkers %d", checkers_count);
         event_printf("start", path, EAGAIN, "-");
         return;
     }
@@ -155,7 +155,7 @@ void check_stop(EV_P_ char *path)
 
     struct check *ck = check_lookup(path);
     if (ck == NULL) {
-        log_debug("not checking '%s'", path);
+        log_warning("not checking '%s'", path);
         event_printf("stop", path, ENOENT, "-");
         return;
     }
@@ -251,7 +251,8 @@ static void check_cb(EV_P_ ev_timer *w, int revents)
             check_reap(EV_A_ &ioeventfd_watcher, 0);
     } else if (ck->state == RUNNING) {
         ev_tstamp elapsed = ev_time() - ck->start;
-        log_error("checker '%s' blocked for %.6f seconds", ck->path, elapsed);
+        log_warning("checker '%s' blocked for %.6f seconds",
+                    ck->path, elapsed);
     } else {
         assert(0 && "invalid state during check callback");
     }

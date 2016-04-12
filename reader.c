@@ -100,7 +100,7 @@ void reader_process(struct reader *r)
 
             if (line == r->buf && reader_available(r) == 0) {
                 /* Buffer full without newline in sight - drop entire buffer */
-                log_error("discarding excessive long line");
+                log_warning("discarding excessive long line");
                 reader_clear(r);
                 /* TODO: send error to caller */
                 return;

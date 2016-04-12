@@ -23,6 +23,7 @@ do { \
 } while (0)
 
 #define log_info(fmt, args...) log_level("INFO", fmt, ##args)
+#define log_warning(fmt, args...) log_level("WARNING", fmt, ##args)
 #define log_error(fmt, args...) log_level("ERROR", fmt, ##args)
 
 #endif

@@ -86,7 +86,7 @@ static void line_received(char *line)
 
     char *cmd = argv[0];
     if (cmd == NULL) {
-        log_error("empty command");
+        log_warning("empty command");
         event_printf("-", "-", EINVAL, "-");
         return;
     }
@@ -94,14 +94,14 @@ static void line_received(char *line)
     if (strcmp(cmd, "start") == 0) {
         char *path = argv[1];
         if (path == NULL) {
-            log_error("path required");
+            log_warning("path required");
             event_printf(cmd, "-", EINVAL, "-");
             return;
         }
 
         char *interval_string = argv[2];
         if (interval_string == NULL) {
-            log_error("interval required");
+            log_warning("interval required");
             event_printf(cmd, path, EINVAL, "-");
             return;
         }
@@ -110,12 +110,12 @@ static void line_received(char *line)
         long interval = strtol(interval_string, &endp, 10);
         if (interval_string == endp || *endp != 0) {
             /* Not converted, or trailing characters */
-            log_error("invalid interval: '%s'", interval_string);
+            log_warning("invalid interval: '%s'", interval_string);
             event_printf(cmd, path, EINVAL, "-");
             return;
         }
         if (interval < 0 || interval == INT_MAX) {
-            log_error("interval out of range: '%s'", interval_string);
+            log_warning("interval out of range: '%s'", interval_string);
             event_printf(cmd, path, EINVAL, "-");
             return;
         }
@@ -124,14 +124,14 @@ static void line_received(char *line)
     } else if (strcmp(cmd, "stop") == 0) {
         char *path = argv[1];
         if (path == NULL) {
-            log_error("path required");
+            log_warning("path required");
             event_printf(cmd, "-", EINVAL, "-");
             return;
         }
 
         check_stop(EV_A_ path);
     } else {
-        log_error("invalid command: '%s'", cmd);
+        log_warning("invalid command: '%s'", cmd);
         event_printf(cmd, "-", EINVAL, "-");
     }
 }
