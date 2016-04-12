@@ -14,28 +14,21 @@ sending events on stdout, and logging messages on stderr.
 
 - stop PATH
 
-  Stop checking PATH. A "stop" event will be sent when the
-  path checker has stopped.
+  Stop checking PATH. A "stop" event will be sent as a response.
 
 ## Events
 
-Events always have 4 fields. Missing values are represented as "-".
-
-  NAME PATH ERRNO DATA
-
-Available events:
-
-- start PATH ERRNO -
+- start PATH ERRNO DESCRIPTION
 
   A "start" command completed. On success (ERRNO=0), a "check" event
   will be sent when the first check completes.
 
-- check PATH ERRNO [DELAY|-]
+- check PATH ERRNO [DELAY|DESCRIPTION]
 
   A check for PATH completed. On success (ERRNO=0), DELAY is the read
   delay in seconds.
 
-- stop PATH ERRNO -
+- stop PATH ERRNO DESCRIPTION
 
   A "stop" command completed. On success (ERRNO=0), no more "check"
   events will be sent. If path checker is busy and cannot be stopped
@@ -54,14 +47,14 @@ The parent process may log the messages using its own logger.
 time   sender  message
 ---------------------------------------------------
 00.000 Client: start /dev/vgname/lvname 10
-00.001 Server: start /dev/vgname/lvname 0 -
+00.001 Server: start /dev/vgname/lvname 0 started
 00.002 Server: check /dev/vgname/lvname 0 0.000542
 10.002 Server: check /dev/vgname/lvname 0 0.001023
 20.001 Server: check /dev/vgname/lvname 0 0.000981
-35.345 Server: check /dev/vgname/lvname 5 -
-40.001 Server: check /dev/vgname/lvname 5 -
-50.001 Server: check /dev/vgname/lvname 5 -
+35.345 Server: check /dev/vgname/lvname 5 Input/output error
+40.001 Server: check /dev/vgname/lvname 5 Input/output error
+50.001 Server: check /dev/vgname/lvname 5 Input/output error
 61.655 Server: check /dev/vgname/lvname 0 1.654321
 69.000 Client: stop /dev/vgname/lvname
-69.001 Server: stop /dev/vgname/lvname 0 -
+69.001 Server: stop /dev/vgname/lvname 0 stopped
 ```

@@ -87,7 +87,7 @@ static void line_received(char *line)
     char *cmd = argv[0];
     if (cmd == NULL) {
         log_warning("empty command");
-        event_printf("-", "-", EINVAL, "-");
+        event_printf("-", "-", EINVAL, "empty commnad");
         return;
     }
 
@@ -95,14 +95,14 @@ static void line_received(char *line)
         char *path = argv[1];
         if (path == NULL) {
             log_warning("path required");
-            event_printf(cmd, "-", EINVAL, "-");
+            event_printf(cmd, "-", EINVAL, "path required");
             return;
         }
 
         char *interval_string = argv[2];
         if (interval_string == NULL) {
             log_warning("interval required");
-            event_printf(cmd, path, EINVAL, "-");
+            event_printf(cmd, path, EINVAL, "interval required");
             return;
         }
 
@@ -111,12 +111,12 @@ static void line_received(char *line)
         if (interval_string == endp || *endp != 0) {
             /* Not converted, or trailing characters */
             log_warning("invalid interval: '%s'", interval_string);
-            event_printf(cmd, path, EINVAL, "-");
+            event_printf(cmd, path, EINVAL, "invalid interval");
             return;
         }
         if (interval < 0 || interval == INT_MAX) {
             log_warning("interval out of range: '%s'", interval_string);
-            event_printf(cmd, path, EINVAL, "-");
+            event_printf(cmd, path, EINVAL, "interval out of range");
             return;
         }
 
@@ -125,14 +125,14 @@ static void line_received(char *line)
         char *path = argv[1];
         if (path == NULL) {
             log_warning("path required");
-            event_printf(cmd, "-", EINVAL, "-");
+            event_printf(cmd, "-", EINVAL, "path required");
             return;
         }
 
         check_stop(EV_A_ path);
     } else {
-        log_warning("invalid command: '%s'", cmd);
-        event_printf(cmd, "-", EINVAL, "-");
+        log_warning("unknown command: '%s'", cmd);
+        event_printf(cmd, "-", EINVAL, "unknown command");
     }
 }
 
