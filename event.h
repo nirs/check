@@ -9,7 +9,7 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-/* Event format: NAME PATH ERRNO [DATA|-] */
+/* Event format: NAME PATH ERRNO DATA... */
 void event_printf(const char *name, const char *path, int error,
                   const char *fmt, ...);
 
