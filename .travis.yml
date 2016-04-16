@@ -7,4 +7,5 @@ addons:
             - libev-dev
             - libaio-dev
 script:
-    - make test
+    - make
+    - py.test -s

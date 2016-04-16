@@ -30,7 +30,6 @@ class Checker(object):
 
     def recv(self):
         event = self.proc.stdout.readline().strip()
-        print event
         args = event.split(None, 3)
         return Event(*args)
 
