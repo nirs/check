@@ -12,206 +12,164 @@ from collections import namedtuple
 import pytest
 
 
+Event = namedtuple("Event", "name,path,error,data")
+
+
+class Checker(object):
+
+    def __init__(self):
+        self.proc = subprocess.Popen(['./check'],
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+
+    def send(self, *args):
+        msg = " ".join(args) + "\n"
+        self.proc.stdin.write(msg)
+        self.proc.stdin.flush()
+
+    def recv(self):
+        event = self.proc.stdout.readline().strip()
+        print event
+        args = event.split(None, 3)
+        return Event(*args)
+
+    def close(self):
+        self.proc.terminate()
+        self.proc.wait()
+
 
 @pytest.yield_fixture
-def process():
-    proc = subprocess.Popen(['./check'],
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    yield proc
-    proc.terminate()
-    proc.wait()
+def checker():
+    c = Checker()
+    yield c
+    c.close()
 
 
-def test_start_file(tmpdir, process):
+def test_start_file(tmpdir, checker):
     path = tmpdir.join("file")
     path.write("x")
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    assert event == "start %s 0 started" % path
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, delay = event.split(None, 3)
-    assert name == "check"
-    assert path == path
-    assert error == "0"
-    assert float(delay) > 0.0
+    checker.send("start", str(path), "1")
+    event = checker.recv()
+    assert_success(event, "start", str(path))
+    event = checker.recv()
+    assert_success(event, "check", str(path))
+    assert float(event.data) > 0.0
 
 
-def test_stop_file(tmpdir, process):
+def test_stop_file(tmpdir, checker):
     path = tmpdir.join("file")
     path.write("x")
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
-    print process.stdout.readline().strip()  # started
-    print process.stdout.readline().strip()  # first check
-    process.stdin.write("stop %s\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert name == "stop"
-    assert path == path
-    assert error == "0"
-    assert desc == "stopped"
+    checker.send("start", str(path), "1")
+    checker.recv()  # started
+    checker.recv()  # first check
+    checker.send("stop", str(path))
+    event = checker.recv()
+    assert_success(event, "stop", str(path))
 
 
-def test_check_repeat(tmpdir, process):
+def test_check_repeat(tmpdir, checker):
     path = tmpdir.join("file")
     path.write("x")
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
+    checker.send("start", str(path), "1")
     start = time.time()
-    print process.stdout.readline().strip()  # started
-    print process.stdout.readline().strip()  # first check
+    checker.recv()  # started
+    checker.recv()  # first check
     for i in range(1, 6):
-        event = process.stdout.readline().strip()
+        event = checker.recv()
         assert round(time.time() - start, 1) == i * 1.0
-        print event
-        name, path, error, delay = event.split(None, 3)
-        assert name == "check"
+        assert_success(event, "check", str(path))
 
 
-def test_start_missing_file(process):
-    process.stdin.write("start nosuchfile 1\n")
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    assert event == "start nosuchfile 0 started"
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert name == "check"
-    assert path == path
-    assert int(error) == errno.ENOENT
+def test_start_missing_file(checker):
+    path = "nosuchfile"
+    checker.send("start", path, "1")
+    event = checker.recv()
+    assert_success(event, "start", path)
+    event = checker.recv()
+    assert_error(event, "check", path, errno.ENOENT)
 
 
-def test_check_file_appear(tmpdir, process):
+def test_check_file_appear(tmpdir, checker):
     path = tmpdir.join("file")
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    event = process.stdout.readline().strip()
-    print event
+    checker.send("start", str(path), "1")
+    checker.recv()  # started
+    checker.recv()  # first check
     path.write("x")
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, delay = event.split(None, 3)
-    assert name == "check"
-    assert path == path
-    assert error == "0"
-    assert float(delay) > 0.0
+    event = checker.recv()
+    assert_success(event, "check", str(path))
+    assert float(event.data) > 0.0
 
 
-def test_check_file_disapear(tmpdir, process):
+def test_check_file_disapear(tmpdir, checker):
     path = tmpdir.join("file")
     path.write("x")
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    event = process.stdout.readline().strip()
-    print event
+    checker.send("start", str(path), "1")
+    checker.recv()  # started
+    checker.recv()  # first check
     path.remove()
+    event = checker.recv()
     # This suceeds now, maybe it should fail?
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, delay = event.split(None, 3)
-    assert name == "check"
-    assert path == path
-    assert error == "0"
-    assert float(delay) > 0.0
+    assert_success(event, "check", str(path))
+    assert float(event.data) > 0.0
 
 
-def test_start_twice(tmpdir, process):
+def test_start_already_checking(tmpdir, checker):
     path = tmpdir.join("file")
     path.write("x")
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    event = process.stdout.readline().strip()
-    print event
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert name == "start"
-    assert path == path
-    assert int(error) == errno.EEXIST
+    checker.send("start", str(path), "1")
+    checker.recv()  # started
+    checker.recv()  # first check
+    checker.send("start", str(path), "1")
+    event = checker.recv()
+    assert_error(event, "start", str(path), errno.EEXIST)
 
 
-def test_stop_twice(tmpdir, process):
-    path = tmpdir.join("file")
-    path.write("x")
-    process.stdin.write("start %s 1\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    event = process.stdout.readline().strip()
-    print event
-    process.stdin.write("stop %s\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    process.stdin.write("stop %s\n" % path)
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert name == "stop"
-    assert path == path
-    assert int(error) == errno.ENOENT
+def test_stop_unchecked_path(tmpdir, checker):
+    checker.send("stop", "path")
+    event = checker.recv()
+    assert_error(event, "stop", "path", errno.ENOENT)
 
 
-def test_start_no_path(process):
-    process.stdin.write("start\n")
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert name == "start"
-    assert int(error) == errno.EINVAL
+def test_start_no_path(checker):
+    checker.send("start")
+    event = checker.recv()
+    assert_error(event, "start", "-", errno.EINVAL)
 
 
-def test_start_no_interval(process):
-    process.stdin.write("start nosuchpath\n")
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert name == "start"
-    assert int(error) == errno.EINVAL
+def test_start_no_interval(checker):
+    checker.send("start", "path")
+    event = checker.recv()
+    assert_error(event, "start", "path", errno.EINVAL)
 
 
-def test_stop_no_path(process):
-    process.stdin.write("stop\n")
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert name == "stop"
-    assert int(error) == errno.EINVAL
+def test_stop_no_path(checker):
+    checker.send("stop")
+    event = checker.recv()
+    assert_error(event, "stop", "-", errno.EINVAL)
 
 
-def test_uknown_cmd(process):
-    process.stdin.write("unknown path 1\n")
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert int(error) == errno.EINVAL
+def test_uknown_cmd(checker):
+    checker.send("unknown", "path", "1")
+    event = checker.recv()
+    assert_error(event, "unknown", "-", errno.EINVAL)
 
 
-def test_empty_cmd(process):
-    process.stdin.write("\n")
-    process.stdin.flush()
-    event = process.stdout.readline().strip()
-    print event
-    name, path, error, desc = event.split(None, 3)
-    assert int(error) == errno.EINVAL
+def test_empty_cmd(checker):
+    checker.send("", "path", "1")
+    event = checker.recv()
+    assert_error(event, "-", "-", errno.EINVAL)
+
+
+# Helpers
+
+def assert_success(event, name, path):
+    assert event.name == name
+    assert event.path == path
+    assert int(event.error) == 0
+
+
+def assert_error(event, name, path, error):
+    assert event.name == name
+    assert event.path == path
+    assert int(event.error) == error

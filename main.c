@@ -85,7 +85,7 @@ static void line_received(char *line)
     split(line, argv, MAX_CMD_ARGS);
 
     char *cmd = argv[0];
-    if (cmd == NULL) {
+    if (cmd == NULL || cmd[0] == 0) {
         log_warning("empty command");
         event_printf("-", "-", EINVAL, "empty commnad");
         return;
