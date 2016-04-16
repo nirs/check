@@ -161,6 +161,80 @@ def test_empty_cmd(checker):
     assert_error(event, "-", "-", errno.EINVAL)
 
 
+@pytest.mark.parametrize("count", [16, 32, 64, 128])
+def test_concurrency(tmpdir, checker, count):
+    paths = {}
+    for i in range(count):
+        path = tmpdir.join("file-%03d" % i)
+        path.write("x")
+        paths[str(path)] = "created"
+
+    start = time.time()
+
+    # Send start message for each path
+    for path in paths:
+        checker.send("start", path, "1")
+        paths[path] = "starting"
+
+    # Recieve 2 messages for each path (start, then check)
+    for i in range(count * 2):
+        event = checker.recv()
+        assert event.name in ("start", "check")
+        assert event.path in paths
+        if event.name == "start":
+            paths[event.path] = "started"
+        elif event.name == "check":
+            paths[event.path] = "checked"
+
+    print "checked %d paths in %.6f" % (count, time.time() - start)
+
+    for path, status in paths.items():
+        assert status == "checked"
+
+
+@pytest.mark.parametrize("count", [16, 32, 64, 128])
+def test_concurrency_delays(tmpdir, checker, count):
+    paths = {}
+    for i in range(count):
+        path = tmpdir.join("file-%03d" % i)
+        path.write("x")
+        paths[str(path)] = {"start": None, "checks": []}
+
+    # Send start message for each path
+    for path in paths:
+        checker.send("start", path, "1")
+        paths[path]["start"] = time.time()
+
+    # Recieve 2 messages for each path (start, then check)
+    for i in range(count * 2):
+        event = checker.recv()
+        assert event.name in ("start", "check")
+        assert event.path in paths
+
+    # Recieve next check messages for each path
+    for i in range(count * 2):
+        event = checker.recv()
+        assert event.name == "check"
+        assert event.path in paths
+        info = paths[event.path]
+        info["checks"].append(time.time() - info["start"])
+
+    delays = []
+    for path, info in sorted(paths.items()):
+        for i, interval in enumerate(info["checks"]):
+            expected = i + 1.0
+            delays.append(interval - expected)
+
+    delays.sort()
+    avg = sum(delays) / len(delays)
+    med = delays[len(delays) // 2]
+    mn = delays[0]
+    mx = delays[-1]
+    print "%d paths delay: avg=%f, med=%f, min=%f, max=%f" % (
+        count, avg, med, mn, mx)
+    assert avg < 0.1
+
+
 # Helpers
 
 def assert_success(event, name, path):
