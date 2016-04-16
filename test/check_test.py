@@ -67,24 +67,6 @@ def test_stop_file(tmpdir, checker):
     assert_success(event, "stop", str(path))
 
 
-def test_check_repeat(tmpdir, checker):
-    path = tmpdir.join("file")
-    path.write("x")
-    checker.send("start", str(path), "1")
-    start = time.time()
-    checker.recv()  # started
-    checker.recv()  # first check
-    for i in range(5):
-        event = checker.recv()
-        now = time.time()
-        assert_success(event, "check", str(path))
-        read_delay = float(event.data)
-        check_time = now - start - read_delay
-        check_interval = check_time - i
-        print "check-interval:", check_interval
-        assert round(check_interval, 1) == 1.0
-
-
 def test_start_missing_file(checker):
     path = "nosuchfile"
     checker.send("start", path, "1")
@@ -165,7 +147,7 @@ def test_empty_cmd(checker):
     assert_error(event, "-", "-", errno.EINVAL)
 
 
-@pytest.mark.parametrize("count", [16, 32, 64, 128])
+@pytest.mark.parametrize("count", [1, 16, 32, 64, 128])
 def test_concurrency(tmpdir, checker, count):
     paths = {}
     for i in range(count):
@@ -196,7 +178,7 @@ def test_concurrency(tmpdir, checker, count):
         assert status == "checked"
 
 
-@pytest.mark.parametrize("count", [16, 32, 64, 128])
+@pytest.mark.parametrize("count", [1, 16, 32, 64, 128])
 def test_concurrency_delays(tmpdir, checker, count):
     paths = {}
     for i in range(count):
