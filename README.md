@@ -1,5 +1,7 @@
 # check - path checking helper
 
+![Build Status](https://travis-ci.org/nirs/check.svg?branch=master)
+
 This program is providing path checking services for vdsm.
 
 The program is running as a child process, accepting commands on stdin,

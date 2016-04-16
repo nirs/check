@@ -1,7 +1,7 @@
 src = reader.c main.c check.c log.c event.c
 
 CPPFLAGS = -D_GNU_SOURCE
-CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -Werror
+CFLAGS = -g -Wall -Wextra -Wno-unused-parameter -Werror -std=c99
 LDLIBS = -lev -laio
 
 obj = $(src:.c=.o)

@@ -1,0 +1,10 @@
+language: python
+python:
+  - "2.7"
+addons:
+    apt:
+        packages:
+            - libev-dev
+            - libaio-dev
+script:
+    - make test
