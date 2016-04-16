@@ -10,6 +10,10 @@ dep = $(src:.c=.d)
 check: $(obj)
 	$(LINK.o) $^ $(LDLIBS) -o $@
 
+.PHONY: test
+test: check
+	py.test
+
 .PHONY: clean
 clean:
 	rm -f check *.o
