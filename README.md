@@ -1,6 +1,7 @@
 # check - path checking helper
 
-![Build Status](https://travis-ci.org/nirs/check.svg?branch=master)
+[![Build Status](https://travis-ci.org/nirs/check.svg?branch=master)]
+(https://travis-ci.org/nirs/check)
 
 This program is providing path checking services for vdsm.
 
