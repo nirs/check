@@ -125,3 +125,93 @@ def test_check_file_disapear(tmpdir, process):
     assert path == path
     assert error == "0"
     assert float(delay) > 0.0
+
+
+def test_start_twice(tmpdir, process):
+    path = tmpdir.join("file")
+    path.write("x")
+    process.stdin.write("start %s 1\n" % path)
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    event = process.stdout.readline().strip()
+    print event
+    process.stdin.write("start %s 1\n" % path)
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    name, path, error, desc = event.split(None, 3)
+    assert name == "start"
+    assert path == path
+    assert int(error) == errno.EEXIST
+
+
+def test_stop_twice(tmpdir, process):
+    path = tmpdir.join("file")
+    path.write("x")
+    process.stdin.write("start %s 1\n" % path)
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    event = process.stdout.readline().strip()
+    print event
+    process.stdin.write("stop %s\n" % path)
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    process.stdin.write("stop %s\n" % path)
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    name, path, error, desc = event.split(None, 3)
+    assert name == "stop"
+    assert path == path
+    assert int(error) == errno.ENOENT
+
+
+def test_start_no_path(process):
+    process.stdin.write("start\n")
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    name, path, error, desc = event.split(None, 3)
+    assert name == "start"
+    assert int(error) == errno.EINVAL
+
+
+def test_start_no_interval(process):
+    process.stdin.write("start nosuchpath\n")
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    name, path, error, desc = event.split(None, 3)
+    assert name == "start"
+    assert int(error) == errno.EINVAL
+
+
+def test_stop_no_path(process):
+    process.stdin.write("stop\n")
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    name, path, error, desc = event.split(None, 3)
+    assert name == "stop"
+    assert int(error) == errno.EINVAL
+
+
+def test_uknown_cmd(process):
+    process.stdin.write("unknown path 1\n")
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    name, path, error, desc = event.split(None, 3)
+    assert int(error) == errno.EINVAL
+
+
+def test_empty_cmd(process):
+    process.stdin.write("\n")
+    process.stdin.flush()
+    event = process.stdout.readline().strip()
+    print event
+    name, path, error, desc = event.split(None, 3)
+    assert int(error) == errno.EINVAL
