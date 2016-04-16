@@ -75,10 +75,15 @@ def test_check_repeat(tmpdir, checker):
     start = time.time()
     checker.recv()  # started
     checker.recv()  # first check
-    for i in range(1, 6):
+    for i in range(5):
         event = checker.recv()
-        assert round(time.time() - start, 1) == i * 1.0
+        now = time.time()
         assert_success(event, "check", str(path))
+        read_delay = float(event.data)
+        check_time = now - start - read_delay
+        check_interval = check_time - i
+        print "check-interval:", check_interval
+        assert round(check_interval, 1) == 1.0
 
 
 def test_start_missing_file(checker):
@@ -214,16 +219,19 @@ def test_concurrency_delays(tmpdir, checker, count):
     # Recieve next check messages for each path
     for i in range(count * 2):
         event = checker.recv()
+        now = time.time()
         assert event.name == "check"
         assert event.path in paths
         info = paths[event.path]
-        info["checks"].append(time.time() - info["start"])
+        check_time = now - info["start"]
+        read_delay = float(event.data)
+        info["checks"].append((check_time, read_delay))
 
     delays = []
     for path, info in sorted(paths.items()):
-        for i, interval in enumerate(info["checks"]):
+        for i, (check_time, read_delay) in enumerate(info["checks"]):
             expected = i + 1.0
-            delays.append(interval - expected)
+            delays.append(check_time - read_delay - expected)
 
     delays.sort()
     avg = sum(delays) / len(delays)
