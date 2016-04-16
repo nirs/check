@@ -60,3 +60,25 @@ time   sender  message
 69.000 Client: stop /dev/vgname/lvname
 69.001 Server: stop /dev/vgname/lvname 0 stopped
 ```
+
+## Hacking
+
+Required packages - Fedora
+```
+dnf install libev-devel libaio-devel pytest
+```
+
+Required packages - Debian
+```
+apt-get install libev-dev libaio-dev pytest
+```
+
+Building:
+```
+make
+```
+
+Running the tests:
+```
+make test
+```
