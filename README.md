@@ -10,37 +10,37 @@ sending events on stdout, and logging messages on stderr.
 
 ## Commands
 
-- start PATH INTERVAL
+- `start PATH INTERVAL`
 
   Start checking PATH every INTERVAL seconds. A "start" event will be
   sent as response.
 
-- stop PATH
+- `stop PATH`
 
   Stop checking PATH. A "stop" event will be sent as a response.
 
 ## Events
 
-- start PATH ERRNO DESCRIPTION
+- `start PATH ERRNO DESCRIPTION`
 
-  A "start" command completed. On success (ERRNO=0), a "check" event
+  A "start" command completed. On success (`ERRNO=0`), a "check" event
   will be sent when the first check completes.
 
-- check PATH ERRNO [DELAY|DESCRIPTION]
+- `check PATH ERRNO [DELAY|DESCRIPTION]`
 
-  A check for PATH completed. On success (ERRNO=0), DELAY is the read
+  A check for PATH completed. On success (`ERRNO=0`), DELAY is the read
   delay in seconds.
 
-- stop PATH ERRNO DESCRIPTION
+- `stop PATH ERRNO DESCRIPTION`
 
-  A "stop" command completed. On success (ERRNO=0), no more "check"
+  A "stop" command completed. On success (`ERRNO=0`), no more "check"
   events will be sent. If path checker is busy and cannot be stopped
   immediately , an EINPROGRESS error is returned, and a second event
   will be sent when io has completed and the path checker has stopped.
 
 ## Logging
 
-- LEVEL message... - log message at LEVEL
+- `LEVEL message...` - log message at LEVEL
 
 The parent process may log the messages using its own logger.
 
