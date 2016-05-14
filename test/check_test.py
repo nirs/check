@@ -19,9 +19,9 @@ class Checker(object):
 
     def __init__(self):
         self.proc = subprocess.Popen(['./check'],
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                     stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
 
     def send(self, *args):
         msg = " ".join(args) + "\n"

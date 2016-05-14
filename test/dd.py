@@ -32,5 +32,5 @@ while True:
     # 4096 bytes (4.1 kB) copied, 0.00129433 s, 3.2 MB/s
     latency = status.split(",", 2)[1]
     latency = latency.strip().split(" ", 1)[0]
-    print "%.9f,%s,%.9f" % (end,latency, elapsed)
+    print "%.9f,%s,%.9f" % (end, latency, elapsed)
     time.sleep(2)
