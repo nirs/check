@@ -4,6 +4,7 @@
 # modify, copy, or redistribute it subject to the terms and conditions
 # of the GNU General Public License v2 or (at your option) any later version.
 
+from __future__ import print_function
 import errno
 import subprocess
 import time
@@ -172,7 +173,7 @@ def test_concurrency(tmpdir, checker, count):
         elif event.name == "check":
             paths[event.path] = "checked"
 
-    print "checked %d paths in %.6f" % (count, time.time() - start)
+    print("checked %d paths in %.6f" % (count, time.time() - start), end=" ")
 
     for path, status in paths.items():
         assert status == "checked"
@@ -219,8 +220,8 @@ def test_concurrency_delays(tmpdir, checker, count):
     med = delays[len(delays) // 2]
     mn = delays[0]
     mx = delays[-1]
-    print "%d paths delay: avg=%f, med=%f, min=%f, max=%f" % (
-        count, avg, med, mn, mx)
+    print("%d paths delay: avg=%f, med=%f, min=%f, max=%f" % (
+        count, avg, med, mn, mx), end=" ")
     assert avg < 0.1
 
 
