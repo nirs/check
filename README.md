@@ -83,9 +83,3 @@ Running the tests:
 ```
 make test
 ```
-
-Running the tests with debugging info:
-```
-make
-py.test -s
-```
