@@ -16,7 +16,7 @@ test: check
 
 .PHONY: clean
 clean:
-	rm -f check *.o
+	rm -f check *.[do]
 
 %.o: %.c %.d
 	$(COMPILE.c) $< -MMD -MF $*.d -o $@
