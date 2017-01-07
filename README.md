@@ -66,12 +66,17 @@ time   sender  message
 
 Required packages - Fedora
 ```
-dnf install libev-devel libaio-devel pytest
+dnf install libev-devel libaio-devel golang
 ```
 
 Required packages - Debian
 ```
-apt-get install libev-dev libaio-dev pytest
+apt-get install libev-dev libaio-dev golang-go
+```
+
+Required packages - common
+```
+pip install --user pytest>=3
 ```
 
 Building:

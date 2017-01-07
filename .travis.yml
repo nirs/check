@@ -8,4 +8,4 @@ addons:
             - libaio-dev
 script:
     - make
-    - py.test -s
+    - py.test

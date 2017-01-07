@@ -1,12 +1,16 @@
-.PHONY: all c test clean
+.PHONY: all c go test clean
 
-all: c
+all: c go
 
 c:
 	$(MAKE) -C $@
 
-test: c
+go:
+	go build -o go/check go/src/check.go
+
+test: all
 	py.test
 
 clean:
 	$(MAKE) -C c clean
+	rm -f go/check
