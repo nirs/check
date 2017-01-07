@@ -18,8 +18,8 @@ Event = namedtuple("Event", "name,path,error,data")
 
 class Checker(object):
 
-    def __init__(self):
-        self.proc = subprocess.Popen(['./check'],
+    def __init__(self, path):
+        self.proc = subprocess.Popen([path],
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
@@ -39,9 +39,9 @@ class Checker(object):
         self.proc.wait()
 
 
-@pytest.yield_fixture
-def checker():
-    c = Checker()
+@pytest.yield_fixture(params=["./c/check"])
+def checker(request):
+    c = Checker(request.param)
     yield c
     c.close()
 
