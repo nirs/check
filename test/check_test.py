@@ -179,6 +179,7 @@ def test_concurrency(tmpdir, checker, count):
         assert status == "checked"
 
 
+@pytest.mark.timeout(5)
 @pytest.mark.parametrize("count", [1, 16, 32, 64, 128])
 def test_concurrency_delays(tmpdir, checker, count):
     paths = {}

@@ -76,7 +76,7 @@ apt-get install libev-dev libaio-dev golang-go
 
 Required packages - common
 ```
-pip install --user pytest>=3
+pip install --user -r requirements.txt
 ```
 
 Building:
