@@ -23,7 +23,7 @@ func main() {
 		cmd := args[0]
 		switch cmd {
 		case "":
-			eventPrint("-", "-", syscall.EINVAL, "empty commnad")
+			eventPrint("-", "-", syscall.EINVAL, "empty command")
 		case "start":
 			if len(args) < 2 {
 				eventPrint(cmd, "-", syscall.EINVAL, "path is required")
@@ -36,7 +36,7 @@ func main() {
 			}
 			interval, err := strconv.Atoi(args[2])
 			if err != nil {
-				eventPrint(cmd, path, syscall.EINVAL, "invalid internval")
+				eventPrint(cmd, path, syscall.EINVAL, "invalid interval")
 				continue
 			}
 			if interval < minCheckInterval || interval > maxCheckInterval {
