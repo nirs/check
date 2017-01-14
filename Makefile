@@ -6,7 +6,7 @@ c:
 	$(MAKE) -C $@
 
 go:
-	go build -o go/check go/src/check.go
+	go build -o go/check go/src/check/main.go
 
 test: all
 	py.test
