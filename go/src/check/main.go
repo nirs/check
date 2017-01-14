@@ -42,15 +42,14 @@ func main() {
 				sendEvent(cmd, path, syscall.EINVAL, "interval out of range")
 				continue
 			}
-			sendEvent(cmd, path, 0, "started")
-			sendEvent("check", path, 0, "0.0005")
+			startChecking(path, interval)
 		case "stop":
 			if len(args) < 2 {
 				sendEvent(cmd, "-", syscall.EINVAL, "path is required")
 				continue
 			}
 			path := args[1]
-			sendEvent(cmd, path, 0, "stopped")
+			stopChecking(path)
 		default:
 			sendEvent(cmd, "-", syscall.EINVAL, "unknown command")
 		}
