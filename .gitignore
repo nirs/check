@@ -1,5 +1,6 @@
 # Program
-check
+c/check
+go/check
 
 # Object files
 *.o
