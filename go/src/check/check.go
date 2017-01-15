@@ -30,6 +30,7 @@ func (ck *Checker) Stop() {
 }
 
 func (ck *Checker) run() {
+	logInfo("checker for %q started", ck.path)
 	sendEvent("start", ck.path, 0, "started")
 	ck.check()
 
@@ -50,11 +51,15 @@ loop:
 	checkersMutex.Unlock()
 
 	sendEvent("stop", ck.path, 0, "stopped")
+	logInfo("checker for %q stopped", ck.path)
 }
 
 func (ck *Checker) check() {
 	// TODO: mark checker as busy during check
+	logDebug("starting check path %q...", ck.path)
 	time.Sleep(time.Microsecond * 500)
+	logDebug("checking path %q completed", ck.path)
+
 	sendEvent("check", ck.path, 0, "0.0005")
 }
 
@@ -68,9 +73,11 @@ func startChecking(path string, interval int) {
 	defer checkersMutex.Unlock()
 	ck, ok := checkers[path]
 	if ok {
+		logWarn("already checking path %s", path)
 		sendEvent("start", path, syscall.EEXIST, "already checking path")
 		return
 	}
+	logInfo("start checking path %q every %d seconds", path, interval)
 	ck = newChecker(path, interval)
 	checkers[path] = ck
 	ck.Start()
@@ -81,8 +88,10 @@ func stopChecking(path string) {
 	defer checkersMutex.Unlock()
 	ck, ok := checkers[path]
 	if !ok {
+		logWarn("not checking path %s", path)
 		sendEvent("stop", path, syscall.ENOENT, "not checking path")
 		return
 	}
+	logInfo("stop checking path %q", path)
 	ck.Stop()
 }
