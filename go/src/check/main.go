@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"os"
 	"strconv"
 	"strings"
@@ -14,7 +15,15 @@ const (
 	maxCheckInterval = 3600
 )
 
+var (
+	debugMode = flag.Bool("debug", false, "Enable debug mode (false)")
+)
+
 func main() {
+	flag.Parse()
+	if *debugMode {
+		setLogLevel(levelDebug)
+	}
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
