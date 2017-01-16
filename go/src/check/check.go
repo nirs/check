@@ -25,8 +25,11 @@ func (ck *Checker) Start() {
 }
 
 func (ck *Checker) Stop() {
-	// TODO: send EINPROGRESS event if the checker is busy
-	ck.stop <- true
+	// Signal checker without blocking
+	select {
+	case ck.stop <- true:
+	default:
+	}
 }
 
 func (ck *Checker) run() {
