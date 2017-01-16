@@ -28,12 +28,14 @@ func (ck *Checker) Stop() {
 	// Signal checker without blocking
 	select {
 	case ck.stop <- true:
+		logDebug("signaled checker %q", ck.path)
 	default:
+		logDebug("checker %q already signaled", ck.path)
 	}
 }
 
 func (ck *Checker) run() {
-	logInfo("checker for %q started", ck.path)
+	logInfo("checker %q started", ck.path)
 	sendEvent("start", ck.path, 0, "started")
 	ck.check()
 
@@ -54,7 +56,7 @@ loop:
 	checkersMutex.Unlock()
 
 	sendEvent("stop", ck.path, 0, "stopped")
-	logInfo("checker for %q stopped", ck.path)
+	logInfo("checker %q stopped", ck.path)
 }
 
 func (ck *Checker) check() {

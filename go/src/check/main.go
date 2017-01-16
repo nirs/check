@@ -31,6 +31,7 @@ func main() {
 		cmd := args[0]
 		switch cmd {
 		case "":
+			logWarn("received empty command")
 			sendEvent("-", "-", syscall.EINVAL, "empty command")
 		case "start":
 			if len(args) < 2 {
@@ -60,6 +61,7 @@ func main() {
 			path := args[1]
 			stopChecking(path)
 		default:
+			logWarn("received unknown command %q", args)
 			sendEvent(cmd, "-", syscall.EINVAL, "unknown command")
 		}
 	}
