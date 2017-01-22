@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"syscall"
 	"time"
@@ -60,12 +61,15 @@ loop:
 }
 
 func (ck *Checker) check() {
-	// TODO: mark checker as busy during check
 	logDebug("starting check path %q...", ck.path)
-	time.Sleep(time.Microsecond * 500)
-	logDebug("checking path %q completed", ck.path)
+	start := time.Now()
 
-	sendEvent("check", ck.path, 0, "0.0005")
+	time.Sleep(time.Microsecond * 500)
+
+	elapsed := time.Since(start).Seconds()
+	logDebug("checking path %q completed in %f seconds", ck.path, elapsed)
+
+	sendEvent("check", ck.path, 0, fmt.Sprintf("%f", elapsed))
 }
 
 var (
