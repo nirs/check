@@ -2,9 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"syscall"
 	"time"
+)
+
+const (
+	BLOCK_SIZE = 4096
 )
 
 type Checker struct {
@@ -61,15 +66,51 @@ loop:
 }
 
 func (ck *Checker) check() {
-	logDebug("starting check path %q...", ck.path)
+	logDebug("starting check %q...", ck.path)
+
+	delay, err := readDelay(ck.path)
+	if err != 0 {
+		logDebug("check %q failed: %s", ck.path, err)
+		sendEvent("check", ck.path, err, err.Error())
+		return
+	}
+
+	logDebug("check %q completed in %f seconds", ck.path, delay)
+	sendEvent("check", ck.path, 0, fmt.Sprintf("%f", delay))
+}
+
+func readDelay(path string) (float64, syscall.Errno) {
 	start := time.Now()
 
-	time.Sleep(time.Microsecond * 500)
+	// TODO: open with os.O_DIRECT
+	file, err := os.Open(path)
+	if err != nil {
+		return 0, errorNumber(err)
+	}
 
-	elapsed := time.Since(start).Seconds()
-	logDebug("checking path %q completed in %f seconds", ck.path, elapsed)
+	defer file.Close()
 
-	sendEvent("check", ck.path, 0, fmt.Sprintf("%f", elapsed))
+	// TODO: use aligned buffer.
+	buf := make([]byte, BLOCK_SIZE)
+
+	_, err = file.Read(buf)
+	if err != nil {
+		return 0, errorNumber(err)
+	}
+
+	return time.Since(start).Seconds(), 0
+}
+
+// errorNumber extract syscall.Errno from os errors.
+func errorNumber(e error) syscall.Errno {
+	switch e := e.(type) {
+	case *os.PathError:
+		return errorNumber(e.Err)
+	case syscall.Errno:
+		return e
+	default:
+		return syscall.EIO
+	}
 }
 
 var (
