@@ -6,10 +6,12 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unsafe"
 )
 
 const (
-	BLOCK_SIZE = 4096
+	BLOCK_SIZE  = 4096
+	BLOCK_ALIGN = 512
 )
 
 type Checker struct {
@@ -82,23 +84,31 @@ func (ck *Checker) check() {
 func readDelay(path string) (float64, syscall.Errno) {
 	start := time.Now()
 
-	// TODO: open with os.O_DIRECT
-	file, err := os.Open(path)
+	flags := os.O_RDONLY | syscall.O_DIRECT | syscall.O_CLOEXEC
+	file, err := os.OpenFile(path, flags, 0)
 	if err != nil {
 		return 0, errorNumber(err)
 	}
 
 	defer file.Close()
 
-	// TODO: use aligned buffer.
-	buf := make([]byte, BLOCK_SIZE)
-
+	buf := alignedBuffer(BLOCK_SIZE)
 	_, err = file.Read(buf)
 	if err != nil {
 		return 0, errorNumber(err)
 	}
 
 	return time.Since(start).Seconds(), 0
+}
+
+func alignedBuffer(size int) []byte {
+	buf := make([]byte, size+BLOCK_ALIGN)
+	offset := 0
+	remainder := int(uintptr(unsafe.Pointer(&buf[0])) & uintptr(BLOCK_ALIGN-1))
+	if remainder != 0 {
+		offset = BLOCK_ALIGN - remainder
+	}
+	return buf[offset : offset+size]
 }
 
 // errorNumber extract syscall.Errno from os errors.
