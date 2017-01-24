@@ -45,7 +45,7 @@ func stopChecking(path string) {
 	ck.Stop()
 }
 
-func deleteChecker(ck *Checker) {
+func checkerStopped(ck *Checker) {
 	checkersMutex.Lock()
 	delete(checkers, ck.path)
 	checkersMutex.Unlock()
@@ -90,7 +90,7 @@ func (ck *Checker) run() {
 			ck.check()
 		case <-ck.stop:
 			ck.ticker.Stop()
-			deleteChecker(ck)
+			checkerStopped(ck)
 			sendEvent("stop", ck.path, 0, "stopped")
 			logInfo("checker %q stopped", ck.path)
 			return
