@@ -84,20 +84,18 @@ func (ck *Checker) run() {
 	sendEvent("start", ck.path, 0, "started")
 	ck.check()
 
-loop:
 	for {
 		select {
 		case <-ck.ticker.C:
 			ck.check()
 		case <-ck.stop:
-			break loop
+			ck.ticker.Stop()
+			deleteChecker(ck)
+			sendEvent("stop", ck.path, 0, "stopped")
+			logInfo("checker %q stopped", ck.path)
+			return
 		}
 	}
-
-	ck.ticker.Stop()
-	deleteChecker(ck)
-	sendEvent("stop", ck.path, 0, "stopped")
-	logInfo("checker %q stopped", ck.path)
 }
 
 func (ck *Checker) check() {
