@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// TODO: make configurable?
 const (
 	sendTimeout = 2 * time.Second
 	queueSize   = 128
@@ -37,8 +36,8 @@ func sendEvent(name string, path string, errno syscall.Errno, data string) {
 func processEvents() {
 	for event := range queue {
 		logDebug("writing event %q", event)
-		// TODO: this can block without limit if parrent is not reading, we
-		// handle this in sendEvent.
+		// This can block without limit if parrent is not reading, we handle
+		// this in sendEvent.
 		_, err := os.Stdout.WriteString(event)
 		if err != nil {
 			logError("cannot write to stdout, terminating: %s", err)
