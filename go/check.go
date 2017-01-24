@@ -12,6 +12,39 @@ const (
 	BLOCK_ALIGN = 512
 )
 
+var (
+	checkers      = make(map[string]*Checker)
+	checkersMutex = sync.Mutex{}
+)
+
+func startChecking(path string, interval int) {
+	checkersMutex.Lock()
+	defer checkersMutex.Unlock()
+	ck, ok := checkers[path]
+	if ok {
+		logWarn("already checking path %s", path)
+		sendEvent("start", path, syscall.EEXIST, "already checking path")
+		return
+	}
+	logInfo("start checking path %q every %d seconds", path, interval)
+	ck = newChecker(path, interval)
+	checkers[path] = ck
+	ck.Start()
+}
+
+func stopChecking(path string) {
+	checkersMutex.Lock()
+	defer checkersMutex.Unlock()
+	ck, ok := checkers[path]
+	if !ok {
+		logWarn("not checking path %s", path)
+		sendEvent("stop", path, syscall.ENOENT, "not checking path")
+		return
+	}
+	logInfo("stop checking path %q", path)
+	ck.Stop()
+}
+
 type Checker struct {
 	path   string
 	ticker *time.Ticker
@@ -77,37 +110,4 @@ func (ck *Checker) check() {
 
 	logDebug("check %q completed in %f seconds", ck.path, delay)
 	sendEvent("check", ck.path, 0, fmt.Sprintf("%f", delay))
-}
-
-var (
-	checkers      = make(map[string]*Checker)
-	checkersMutex = sync.Mutex{}
-)
-
-func startChecking(path string, interval int) {
-	checkersMutex.Lock()
-	defer checkersMutex.Unlock()
-	ck, ok := checkers[path]
-	if ok {
-		logWarn("already checking path %s", path)
-		sendEvent("start", path, syscall.EEXIST, "already checking path")
-		return
-	}
-	logInfo("start checking path %q every %d seconds", path, interval)
-	ck = newChecker(path, interval)
-	checkers[path] = ck
-	ck.Start()
-}
-
-func stopChecking(path string) {
-	checkersMutex.Lock()
-	defer checkersMutex.Unlock()
-	ck, ok := checkers[path]
-	if !ok {
-		logWarn("not checking path %s", path)
-		sendEvent("stop", path, syscall.ENOENT, "not checking path")
-		return
-	}
-	logInfo("stop checking path %q", path)
-	ck.Stop()
 }
