@@ -6,6 +6,7 @@ import (
 	"syscall"
 	"time"
 
+	event "check/go/event"
 	log "check/go/log"
 )
 
@@ -25,7 +26,7 @@ func startChecking(path string, interval int) {
 	ck, ok := checkers[path]
 	if ok {
 		log.Warn("already checking path %s", path)
-		sendEvent("start", path, syscall.EEXIST, "already checking path")
+		event.Send("start", path, syscall.EEXIST, "already checking path")
 		return
 	}
 	log.Info("start checking path %q every %d seconds", path, interval)
@@ -40,7 +41,7 @@ func stopChecking(path string) {
 	ck, ok := checkers[path]
 	if !ok {
 		log.Warn("not checking path %s", path)
-		sendEvent("stop", path, syscall.ENOENT, "not checking path")
+		event.Send("stop", path, syscall.ENOENT, "not checking path")
 		return
 	}
 	log.Info("stop checking path %q", path)
@@ -83,7 +84,7 @@ func (ck *Checker) Stop() {
 
 func (ck *Checker) run() {
 	log.Info("checker %q started", ck.path)
-	sendEvent("start", ck.path, 0, "started")
+	event.Send("start", ck.path, 0, "started")
 	ck.check()
 
 	for {
@@ -93,7 +94,7 @@ func (ck *Checker) run() {
 		case <-ck.stop:
 			ck.ticker.Stop()
 			checkerStopped(ck)
-			sendEvent("stop", ck.path, 0, "stopped")
+			event.Send("stop", ck.path, 0, "stopped")
 			log.Info("checker %q stopped", ck.path)
 			return
 		}
@@ -106,10 +107,10 @@ func (ck *Checker) check() {
 	delay, err := readDelay(ck.path)
 	if err != 0 {
 		log.Debug("check %q failed: %s", ck.path, err)
-		sendEvent("check", ck.path, err, err.Error())
+		event.Send("check", ck.path, err, err.Error())
 		return
 	}
 
 	log.Debug("check %q completed in %f seconds", ck.path, delay)
-	sendEvent("check", ck.path, 0, fmt.Sprintf("%f", delay))
+	event.Send("check", ck.path, 0, fmt.Sprintf("%f", delay))
 }

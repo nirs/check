@@ -1,4 +1,4 @@
-package main
+package event
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func init() {
 }
 
 // Send an event to the parrent process
-func sendEvent(name string, path string, errno syscall.Errno, data string) {
+func Send(name string, path string, errno syscall.Errno, data string) {
 	event := fmt.Sprintf("%s %s %d %s\n", name, path, errno, data)
 
 	select {

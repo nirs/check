@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 
+	event "check/go/event"
 	log "check/go/log"
 )
 
@@ -34,27 +35,27 @@ func main() {
 		switch cmd {
 		case "start":
 			if len(args) < 2 {
-				sendEvent(cmd, "-", syscall.EINVAL, "path is required")
+				event.Send(cmd, "-", syscall.EINVAL, "path is required")
 				continue
 			}
 			path := args[1]
 			if len(args) < 3 {
-				sendEvent(cmd, path, syscall.EINVAL, "interval is required")
+				event.Send(cmd, path, syscall.EINVAL, "interval is required")
 				continue
 			}
 			interval, err := strconv.Atoi(args[2])
 			if err != nil {
-				sendEvent(cmd, path, syscall.EINVAL, "invalid interval")
+				event.Send(cmd, path, syscall.EINVAL, "invalid interval")
 				continue
 			}
 			if interval < minCheckInterval || interval > maxCheckInterval {
-				sendEvent(cmd, path, syscall.EINVAL, "interval out of range")
+				event.Send(cmd, path, syscall.EINVAL, "interval out of range")
 				continue
 			}
 			startChecking(path, interval)
 		case "stop":
 			if len(args) < 2 {
-				sendEvent(cmd, "-", syscall.EINVAL, "path is required")
+				event.Send(cmd, "-", syscall.EINVAL, "path is required")
 				continue
 			}
 			path := args[1]
@@ -64,7 +65,7 @@ func main() {
 			if cmd == "" {
 				cmd = "-"
 			}
-			sendEvent(cmd, "-", syscall.EINVAL, "unknown command")
+			event.Send(cmd, "-", syscall.EINVAL, "unknown command")
 		}
 	}
 }
