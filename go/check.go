@@ -45,6 +45,12 @@ func stopChecking(path string) {
 	ck.Stop()
 }
 
+func deleteChecker(ck *Checker) {
+	checkersMutex.Lock()
+	delete(checkers, ck.path)
+	checkersMutex.Unlock()
+}
+
 type Checker struct {
 	path   string
 	ticker *time.Ticker
@@ -89,11 +95,7 @@ loop:
 	}
 
 	ck.ticker.Stop()
-
-	checkersMutex.Lock()
-	delete(checkers, ck.path)
-	checkersMutex.Unlock()
-
+	deleteChecker(ck)
 	sendEvent("stop", ck.path, 0, "stopped")
 	logInfo("checker %q stopped", ck.path)
 }
