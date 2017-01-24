@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	log "check/go/log"
 )
 
 const (
@@ -22,7 +24,7 @@ var (
 func main() {
 	flag.Parse()
 	if *debugMode {
-		setLogLevel(levelDebug)
+		log.SetLevel(log.DEBUG)
 	}
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -58,7 +60,7 @@ func main() {
 			path := args[1]
 			stopChecking(path)
 		default:
-			logWarn("received unknown command %q", args)
+			log.Warn("received unknown command %q", args)
 			if cmd == "" {
 				cmd = "-"
 			}

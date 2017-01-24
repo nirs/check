@@ -5,6 +5,8 @@ import (
 	"os"
 	"syscall"
 	"time"
+
+	log "check/go/log"
 )
 
 const (
@@ -26,21 +28,21 @@ func sendEvent(name string, path string, errno syscall.Errno, data string) {
 
 	select {
 	case queue <- event:
-		logDebug("sent event %q", event)
+		log.Debug("sent event %q", event)
 	case <-time.After(sendTimeout):
-		logError("timeout sending event, terminating")
+		log.Error("timeout sending event, terminating")
 		os.Exit(1)
 	}
 }
 
 func processEvents() {
 	for event := range queue {
-		logDebug("writing event %q", event)
+		log.Debug("writing event %q", event)
 		// This can block without limit if parrent is not reading, we handle
 		// this in sendEvent.
 		_, err := os.Stdout.WriteString(event)
 		if err != nil {
-			logError("cannot write to stdout, terminating: %s", err)
+			log.Error("cannot write to stdout, terminating: %s", err)
 			os.Exit(1)
 		}
 	}
