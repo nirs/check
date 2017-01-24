@@ -10,6 +10,7 @@ import (
 
 	event "check/go/event"
 	log "check/go/log"
+	monitor "check/go/monitor"
 )
 
 const (
@@ -52,14 +53,14 @@ func main() {
 				event.Send(cmd, path, syscall.EINVAL, "interval out of range")
 				continue
 			}
-			startChecking(path, interval)
+			monitor.Start(path, interval)
 		case "stop":
 			if len(args) < 2 {
 				event.Send(cmd, "-", syscall.EINVAL, "path is required")
 				continue
 			}
 			path := args[1]
-			stopChecking(path)
+			monitor.Stop(path)
 		default:
 			log.Warn("received unknown command %q", args)
 			if cmd == "" {

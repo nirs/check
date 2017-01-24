@@ -1,10 +1,15 @@
-package main
+package monitor
 
 import (
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
+)
+
+const (
+	blockSize  = 4096
+	blockAlign = 512
 )
 
 func readDelay(path string) (float64, syscall.Errno) {
@@ -18,7 +23,7 @@ func readDelay(path string) (float64, syscall.Errno) {
 
 	defer file.Close()
 
-	buf := alignedBuffer(BLOCK_SIZE)
+	buf := alignedBuffer(blockSize)
 	_, err = file.Read(buf)
 	if err != nil {
 		return 0, errorNumber(err)
@@ -28,11 +33,11 @@ func readDelay(path string) (float64, syscall.Errno) {
 }
 
 func alignedBuffer(size int) []byte {
-	buf := make([]byte, size+BLOCK_ALIGN)
+	buf := make([]byte, size+blockAlign)
 	offset := 0
-	remainder := int(uintptr(unsafe.Pointer(&buf[0])) & uintptr(BLOCK_ALIGN-1))
+	remainder := int(uintptr(unsafe.Pointer(&buf[0])) & uintptr(blockAlign-1))
 	if remainder != 0 {
-		offset = BLOCK_ALIGN - remainder
+		offset = blockAlign - remainder
 	}
 	return buf[offset : offset+size]
 }
