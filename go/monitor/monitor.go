@@ -103,7 +103,7 @@ func (m *Monitor) check() {
 
 	delay, err := readDelay(m.path)
 	if err != 0 {
-		log.Debug("check %q failed: %s", m.path, err)
+		log.Error("check %q failed: %s", m.path, err)
 		event.Send("check", m.path, err, err.Error())
 		return
 	}
