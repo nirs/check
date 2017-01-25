@@ -16,7 +16,7 @@ var (
 )
 
 // Start monitoring path
-func Start(path string, interval int) {
+func Start(path string, interval int, checker Checker) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	m, ok := monitors[path]
@@ -26,7 +26,7 @@ func Start(path string, interval int) {
 		return
 	}
 	log.Info("start monitoring path %q (interval=%d)", path, interval)
-	m = newMonitor(path, interval)
+	m = newMonitor(path, interval, checker)
 	monitors[path] = m
 	m.Start()
 }
@@ -59,6 +59,10 @@ const (
 	STOPPING
 )
 
+type Checker interface {
+	ReadDelay(path string) (float64, syscall.Errno)
+}
+
 type Monitor struct {
 	path     string
 	state    State
@@ -66,15 +70,17 @@ type Monitor struct {
 	stop     chan bool
 	complete chan bool
 	start    time.Time
+	checker  Checker
 }
 
-func newMonitor(path string, interval int) *Monitor {
+func newMonitor(path string, interval int, checker Checker) *Monitor {
 	return &Monitor{
 		path:     path,
 		state:    WAITING,
 		ticker:   time.NewTicker(time.Second * time.Duration(interval)),
 		stop:     make(chan bool),
 		complete: make(chan bool),
+		checker:  checker,
 	}
 }
 
@@ -141,7 +147,7 @@ func (m *Monitor) check() {
 	go func() {
 		defer func() { m.complete <- true }()
 
-		delay, err := readDelay(m.path)
+		delay, err := m.checker.ReadDelay(m.path)
 		if err != 0 {
 			log.Error("check %q failed: %s", m.path, err)
 			event.Send("check", m.path, err, err.Error())

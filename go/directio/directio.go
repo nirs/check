@@ -1,4 +1,4 @@
-package monitor
+package directio
 
 import (
 	"os"
@@ -8,11 +8,18 @@ import (
 )
 
 const (
-	blockSize  = 4096
-	blockAlign = 512
+	bufAlign = 512
 )
 
-func readDelay(path string) (float64, syscall.Errno) {
+type Checker struct {
+	buf []byte
+}
+
+func NewChecker(size int) *Checker {
+	return &Checker{alignedBuffer(size, bufAlign)}
+}
+
+func (c *Checker) ReadDelay(path string) (float64, syscall.Errno) {
 	start := time.Now()
 
 	flags := os.O_RDONLY | syscall.O_DIRECT | syscall.O_CLOEXEC
@@ -23,8 +30,7 @@ func readDelay(path string) (float64, syscall.Errno) {
 
 	defer file.Close()
 
-	buf := alignedBuffer(blockSize)
-	_, err = file.Read(buf)
+	_, err = file.Read(c.buf)
 	if err != nil {
 		return 0, errorNumber(err)
 	}
@@ -32,12 +38,12 @@ func readDelay(path string) (float64, syscall.Errno) {
 	return time.Since(start).Seconds(), 0
 }
 
-func alignedBuffer(size int) []byte {
-	buf := make([]byte, size+blockAlign)
+func alignedBuffer(size int, align int) []byte {
+	buf := make([]byte, size+align)
 	offset := 0
-	remainder := int(uintptr(unsafe.Pointer(&buf[0])) & uintptr(blockAlign-1))
+	remainder := int(uintptr(unsafe.Pointer(&buf[0])) & uintptr(align-1))
 	if remainder != 0 {
-		offset = blockAlign - remainder
+		offset = align - remainder
 	}
 	return buf[offset : offset+size]
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 
+	directio "check/go/directio"
 	event "check/go/event"
 	log "check/go/log"
 	monitor "check/go/monitor"
@@ -17,6 +18,7 @@ const (
 	maxCommandArgs   = 3
 	minCheckInterval = 1
 	maxCheckInterval = 3600
+	checkSize        = 4096
 )
 
 var (
@@ -53,7 +55,8 @@ func main() {
 				event.Send(cmd, path, syscall.EINVAL, "interval out of range")
 				continue
 			}
-			monitor.Start(path, interval)
+			checker := directio.NewChecker(checkSize)
+			monitor.Start(path, interval, checker)
 		case "stop":
 			if len(args) < 2 {
 				event.Send(cmd, "-", syscall.EINVAL, "path is required")
