@@ -51,17 +51,17 @@ func monitorStopped(m *Monitor) {
 	mutex.Unlock()
 }
 
-type monitorState int
+type State int
 
 const (
-	WAITING monitorState = 0 + iota
+	WAITING State = 0 + iota
 	CHECKING
 	STOPPING
 )
 
 type Monitor struct {
 	path     string
-	state    monitorState
+	state    State
 	ticker   *time.Ticker
 	stop     chan bool
 	complete chan bool
