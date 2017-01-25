@@ -96,9 +96,8 @@ def test_check_file_disapear(tmpdir, checker):
     checker.recv()  # first check
     path.remove()
     event = checker.recv()
-    # This suceeds now, maybe it should fail?
-    assert_success(event, "check", str(path))
-    assert float(event.data) > 0.0
+    # This fails in the c version, since it open the file once on startup.
+    assert_error(event, "check", str(path), errno.ENOENT)
 
 
 def test_start_already_checking(tmpdir, checker):
