@@ -21,11 +21,11 @@ func Start(path string, interval int) {
 	defer mutex.Unlock()
 	m, ok := monitors[path]
 	if ok {
-		log.Warn("already checking path %s", path)
-		event.Send("start", path, syscall.EEXIST, "already checking path")
+		log.Warn("already monitoring path %s", path)
+		event.Send("start", path, syscall.EEXIST, "already monitoring path")
 		return
 	}
-	log.Info("start checking path %q every %d seconds", path, interval)
+	log.Info("start monitoring path %q (interval=%d)", path, interval)
 	m = newMonitor(path, interval)
 	monitors[path] = m
 	m.Start()
@@ -37,11 +37,11 @@ func Stop(path string) {
 	defer mutex.Unlock()
 	m, ok := monitors[path]
 	if !ok {
-		log.Warn("not checking path %s", path)
-		event.Send("stop", path, syscall.ENOENT, "not checking path")
+		log.Warn("not monitoring path %s", path)
+		event.Send("stop", path, syscall.ENOENT, "not monitoring path")
 		return
 	}
-	log.Info("stop checking path %q", path)
+	log.Info("stop monitoring path %q", path)
 	m.Stop()
 }
 
