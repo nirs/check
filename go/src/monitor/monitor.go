@@ -6,8 +6,8 @@ import (
 	"syscall"
 	"time"
 
-	event "check/go/event"
-	log "check/go/log"
+	"event"
+	log "slog"
 )
 
 var (

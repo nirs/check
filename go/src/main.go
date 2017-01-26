@@ -8,10 +8,10 @@ import (
 	"strings"
 	"syscall"
 
-	directio "check/go/directio"
-	event "check/go/event"
-	log "check/go/log"
-	monitor "check/go/monitor"
+	"directio"
+	"event"
+	"monitor"
+	log "slog"
 )
 
 const (

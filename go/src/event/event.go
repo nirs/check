@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"time"
 
-	log "check/go/log"
+	log "slog"
 )
 
 const (

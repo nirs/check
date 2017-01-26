@@ -6,7 +6,7 @@ c:
 	$(MAKE) -C $@
 
 go:
-	go build -o go/check ./go
+	GOPATH=$(abspath go) go build -o go/check go/src/main.go
 
 test: all
 	py.test
