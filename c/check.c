@@ -320,6 +320,11 @@ static int check_open_fd(struct check *ck)
     if (debug_mode)
         start = ev_time();
 
+    /*
+     * TODO: Tesing with NFS show that this can block for unlimited time,
+     * breaking isolation. Seems that there is no way to avoid a thread pool
+     * for opening a file descriptor.
+     */
     ck->fd = open(ck->path, O_RDONLY | O_DIRECT | O_NONBLOCK);
 
     if (ck->fd == -1) {
