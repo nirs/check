@@ -374,8 +374,10 @@ static void check_completed(struct check *ck, int error, ev_tstamp when)
 {
     ck->state = WAITING;
 
-    close(ck->fd);
-    ck->fd = -1;
+    if (ck->fd != -1) {
+        close(ck->fd);
+        ck->fd = -1;
+    }
 
     running--;
     assert(running >= 0 && "negative number of running requests");
