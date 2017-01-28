@@ -11,6 +11,8 @@ import signal
 import sys
 import time
 
+START_DELAY = 0.01
+
 running = True
 
 def terminate(signo, frame):
@@ -34,6 +36,7 @@ with open("check.log", "a") as log:
     for path in paths:
         p.stdin.write("start %s %d\n" % (path, interval))
         p.stdin.flush()
+        time.sleep(START_DELAY)
     while running:
         try:
             signal.pause()
