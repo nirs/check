@@ -22,12 +22,16 @@ const (
 )
 
 var (
-	debugMode = flag.Bool("debug", false, "Enable debug mode (false)")
+	debugMode bool
 )
+
+func init() {
+	flag.BoolVar(&debugMode, "debug", false, "Enable debug mode")
+}
 
 func main() {
 	flag.Parse()
-	if *debugMode {
+	if debugMode {
 		log.SetLevel(log.DEBUG)
 	}
 	scanner := bufio.NewScanner(os.Stdin)
