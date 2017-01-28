@@ -49,17 +49,17 @@ The parent process may log the messages using its own logger.
 ```
 time   sender  message
 ---------------------------------------------------
-00.000 Client: start /dev/vgname/lvname 10
-00.001 Server: start /dev/vgname/lvname 0 started
-00.002 Server: check /dev/vgname/lvname 0 0.000542
-10.002 Server: check /dev/vgname/lvname 0 0.001023
-20.001 Server: check /dev/vgname/lvname 0 0.000981
-35.345 Server: check /dev/vgname/lvname 5 Input/output error
-40.001 Server: check /dev/vgname/lvname 5 Input/output error
-50.001 Server: check /dev/vgname/lvname 5 Input/output error
-61.655 Server: check /dev/vgname/lvname 0 1.654321
-69.000 Client: stop /dev/vgname/lvname
-69.001 Server: stop /dev/vgname/lvname 0 stopped
+00.000 Client: start /path 10
+00.001 Server: start /path 0 started
+00.002 Server: check /path 0 0.000542
+10.002 Server: check /path 0 0.001023
+20.001 Server: check /path 0 0.000981
+35.345 Server: check /path 5 Input/output error
+40.001 Server: check /path 5 Input/output error
+50.001 Server: check /path 5 Input/output error
+61.655 Server: check /path 0 1.654321
+69.000 Client: stop /path
+69.001 Server: stop /path 0 stopped
 ```
 
 ## Hacking
