@@ -147,10 +147,10 @@ func (m *Monitor) check() {
 	go func() {
 		defer func() { m.complete <- true }()
 
-		delay, err := m.checker.ReadDelay(m.path)
-		if err != 0 {
-			log.Error("check %q failed: %s", m.path, err)
-			event.Send("check", m.path, err, err.Error())
+		delay, errno := m.checker.ReadDelay(m.path)
+		if errno != 0 {
+			log.Error("check %q failed: %s", m.path, errno)
+			event.Send("check", m.path, errno, errno.Error())
 			return
 		}
 
