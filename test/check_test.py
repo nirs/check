@@ -40,7 +40,7 @@ class Checker(object):
         self.proc.wait()
 
 
-@pytest.yield_fixture(params=["./c/check", "./go/check"])
+@pytest.fixture(params=["./c/check", "./go/check"])
 def checker(request):
     c = Checker(request.param)
     yield c
