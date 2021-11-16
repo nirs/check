@@ -4,7 +4,6 @@
 # modify, copy, or redistribute it subject to the terms and conditions
 # of the GNU General Public License v2 or (at your option) any later version.
 
-from __future__ import print_function
 import errno
 import subprocess
 import time
@@ -26,11 +25,13 @@ class Checker(object):
 
     def send(self, *args):
         msg = " ".join(args) + "\n"
+        msg = msg.encode()
         self.proc.stdin.write(msg)
         self.proc.stdin.flush()
 
     def recv(self):
         event = self.proc.stdout.readline().strip()
+        event = event.decode()
         args = event.split(None, 3)
         return Event(*args)
 
