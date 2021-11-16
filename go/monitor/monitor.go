@@ -6,8 +6,8 @@ import (
 	"syscall"
 	"time"
 
-	"event"
-	log "slog"
+	"ovirt.org/check/event"
+	log "ovirt.org/check/slog"
 )
 
 var (

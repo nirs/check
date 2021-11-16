@@ -8,10 +8,10 @@ import (
 	"strings"
 	"syscall"
 
-	"directio"
-	"event"
-	"monitor"
-	log "slog"
+	"ovirt.org/check/directio"
+	"ovirt.org/check/event"
+	"ovirt.org/check/monitor"
+	log "ovirt.org/check/slog"
 )
 
 const (
