@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"ovirt.org/check/event"
-	log "ovirt.org/check/slog"
+	"ovirt.org/check/log"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"time"
 
-	log "ovirt.org/check/slog"
+	"ovirt.org/check/log"
 )
 
 const (

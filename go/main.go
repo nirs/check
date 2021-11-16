@@ -11,7 +11,7 @@ import (
 	"ovirt.org/check/directio"
 	"ovirt.org/check/event"
 	"ovirt.org/check/monitor"
-	log "ovirt.org/check/slog"
+	"ovirt.org/check/log"
 )
 
 const (
