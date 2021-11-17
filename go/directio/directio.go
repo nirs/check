@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	bufAlign = 512
+	// Should work with any storage.
+	bufAlign = 4096
 )
 
 type Checker struct {
