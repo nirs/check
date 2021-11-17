@@ -37,7 +37,7 @@ func (c *Checker) Check(path string) syscall.Errno {
 }
 
 func alignedBuffer(size int, align int) []byte {
-	buf := make([]byte, size+align)
+	buf := make([]byte, size+align-1)
 	offset := 0
 	remainder := int(uintptr(unsafe.Pointer(&buf[0])) & uintptr(align-1))
 	if remainder != 0 {
