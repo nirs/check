@@ -1,13 +1,5 @@
 # Program
-c/check
-go/check
-
-# Object files
-*.o
-
-# Dependencies files
-*.d
+check
 
 # pytest
 __pycache__
-.cache

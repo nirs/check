@@ -42,7 +42,7 @@ class Checker(object):
 
 @pytest.fixture
 def checker():
-    c = Checker("go/check")
+    c = Checker("./check")
     yield c
     c.close()
 

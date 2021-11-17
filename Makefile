@@ -1,12 +1,10 @@
-.PHONY: all go test clean
+.PHONY: check test clean
 
-all: go
+check:
+	go build
 
-go:
-	cd $@ && go build
-
-test: all
+test: check
 	py.test
 
 clean:
-	rm -f go/check
+	rm -f check
