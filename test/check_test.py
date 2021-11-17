@@ -18,10 +18,12 @@ Event = namedtuple("Event", "name,path,error,data")
 class Checker(object):
 
     def __init__(self, path):
-        self.proc = subprocess.Popen([path],
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
+        self.proc = subprocess.Popen(
+            [path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
     def send(self, *args):
         msg = " ".join(args) + "\n"
