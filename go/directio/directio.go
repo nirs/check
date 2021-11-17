@@ -3,7 +3,6 @@ package directio
 import (
 	"os"
 	"syscall"
-	"time"
 	"unsafe"
 )
 
@@ -19,23 +18,21 @@ func NewChecker(size int) *Checker {
 	return &Checker{alignedBuffer(size, bufAlign)}
 }
 
-func (c *Checker) ReadDelay(path string) (float64, syscall.Errno) {
-	start := time.Now()
-
+func (c *Checker) Check(path string) syscall.Errno {
 	flags := os.O_RDONLY | syscall.O_DIRECT | syscall.O_CLOEXEC
 	file, err := os.OpenFile(path, flags, 0)
 	if err != nil {
-		return 0, errorNumber(err)
+		return errorNumber(err)
 	}
 
 	defer file.Close()
 
 	_, err = file.Read(c.buf)
 	if err != nil {
-		return 0, errorNumber(err)
+		return errorNumber(err)
 	}
 
-	return time.Since(start).Seconds(), 0
+	return 0
 }
 
 func alignedBuffer(size int, align int) []byte {

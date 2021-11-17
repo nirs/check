@@ -60,7 +60,7 @@ const (
 )
 
 type Checker interface {
-	ReadDelay(path string) (float64, syscall.Errno)
+	Check(path string) syscall.Errno
 }
 
 type Monitor struct {
@@ -147,7 +147,10 @@ func (m *Monitor) check() {
 	go func() {
 		defer func() { m.complete <- true }()
 
-		delay, errno := m.checker.ReadDelay(m.path)
+	    start := time.Now()
+		errno := m.checker.Check(m.path)
+        delay := time.Since(start).Seconds()
+
 		if errno != 0 {
 			log.Error("check %q failed: %s", m.path, errno)
 			event.Send("check", m.path, errno, errno.Error())
