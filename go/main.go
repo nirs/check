@@ -10,8 +10,8 @@ import (
 
 	"ovirt.org/check/directio"
 	"ovirt.org/check/event"
-	"ovirt.org/check/monitor"
 	"ovirt.org/check/log"
+	"ovirt.org/check/monitor"
 )
 
 const (

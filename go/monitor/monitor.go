@@ -147,9 +147,9 @@ func (m *Monitor) check() {
 	go func() {
 		defer func() { m.complete <- true }()
 
-	    start := time.Now()
+		start := time.Now()
 		errno := m.checker.Check(m.path)
-        delay := time.Since(start).Seconds()
+		delay := time.Since(start).Seconds()
 
 		if errno != 0 {
 			log.Error("check %q failed: %s", m.path, errno)
