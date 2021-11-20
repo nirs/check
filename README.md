@@ -63,17 +63,17 @@ time   sender  message
 
 Required packages - Fedora
 ```
-dnf install libev-devel libaio-devel golang
+dnf install golang make
 ```
 
 Required packages - Debian
 ```
-apt-get install libev-dev libaio-dev golang-go
+apt-get install golang-go make
 ```
 
 Required packages - common
 ```
-pip install --user -r requirements.txt
+pip install -r requirements.txt
 ```
 
 Building:
