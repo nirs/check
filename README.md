@@ -93,3 +93,19 @@ make test
 ```
 
 Please open a merge request in gitlab.
+
+## Containers
+
+To build the containers locally:
+
+    cd containers
+    make
+
+To run the tests in a container:
+
+    podman run \
+        -it \
+        --rm \
+        --volume `pwd`:/src:Z \
+        check-fedora-35 \
+        bash -c "cd src && make test"
