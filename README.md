@@ -61,6 +61,12 @@ time   sender  message
 
 ## Hacking
 
+Clone the source from gitlab:
+
+```
+git clone https://gitlab.com/nirs/check.git
+```
+
 Required packages - Fedora
 ```
 dnf install golang make
@@ -85,3 +91,5 @@ Running the tests:
 ```
 make test
 ```
+
+Please open a merge request in gitlab.
