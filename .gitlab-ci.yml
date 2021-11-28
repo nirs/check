@@ -1,0 +1,5 @@
+image: quay.io/nirsof/check-fedora-35
+
+test:
+  script:
+    - make test
